@@ -713,7 +713,15 @@ export default function ChatApp() {
       </header>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
+      <div 
+        className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4"
+        style={currentUser === "user2" ? {
+          backgroundImage: "linear-gradient(rgba(3, 7, 18, 0.75), rgba(3, 7, 18, 0.75)), url('/bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed"
+        } : {}}
+      >
         {messages.map((msg) => {
           const isMe = msg.sender === currentUser;
           return (
