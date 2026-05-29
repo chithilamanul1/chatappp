@@ -15,6 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Free E-Book Library",
   description: "Download free PDF textbooks, study guides, and e-books.",
+  openGraph: {
+    title: "Free E-Book Library",
+    description: "Download free PDF textbooks, study guides, and e-books.",
+    url: "https://chatappp-eight.vercel.app",
+    siteName: "E-Book Library",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
