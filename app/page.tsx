@@ -242,6 +242,29 @@ export default function ChatApp() {
     }
   }, [messages, isLoggedIn, currentUser]);
 
+  const previousOnlineRef = useRef(isPartnerOnline);
+
+  // Request Notification Permission on Login
+  useEffect(() => {
+    if (isLoggedIn && "Notification" in window) {
+      if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+    }
+  }, [isLoggedIn]);
+
+  // Trigger Notification when partner comes online
+  useEffect(() => {
+    if (isPartnerOnline && !previousOnlineRef.current) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Library Member Online", {
+          body: "A member has just connected to the study portal.",
+        });
+      }
+    }
+    previousOnlineRef.current = isPartnerOnline;
+  }, [isPartnerOnline]);
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // Simple custom authentication logic
