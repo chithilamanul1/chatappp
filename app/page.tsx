@@ -117,6 +117,7 @@ export default function ChatApp() {
   const [myLocation, setMyLocation] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [activeMsgId, setActiveMsgId] = useState<string | null>(null);
+  const [showInfoForMsg, setShowInfoForMsg] = useState<any | null>(null);
   const [isViewOnce, setIsViewOnce] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -278,13 +279,14 @@ export default function ChatApp() {
     if (unreadMessages.length > 0) {
       const markAsRead = async () => {
         const unreadIds = unreadMessages.map(m => m.id);
+        const now = new Date().toISOString();
         
         // Optimistically update local state so we don't spam the database
-        setMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, read: true } : m));
+        setMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, read: true, read_at: now, read_by_ip: myIp } : m));
 
         await supabase
           .from("messages")
-          .update({ read: true })
+          .update({ read: true, read_at: now, read_by_ip: myIp })
           .in('id', unreadIds);
       };
       markAsRead();
@@ -528,12 +530,22 @@ export default function ChatApp() {
                 onClick={() => { if (isMe) setActiveMsgId(activeMsgId === msg.id ? null : msg.id); }}
               >
                 {isMe && activeMsgId === msg.id && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
-                    className="absolute -left-10 top-1/2 -translate-y-1/2 bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md z-10"
-                  >
-                    🗑️
-                  </button>
+                  <div className="absolute -left-20 top-1/2 -translate-y-1/2 flex gap-1 z-10">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setShowInfoForMsg(msg); setActiveMsgId(null); }}
+                      className="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                      title="Message Info"
+                    >
+                      ℹ️
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                      className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                      title="Delete Message"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 )}
 
                 {msg.message_type === "text" && <p>{msg.content}</p>}
@@ -638,6 +650,47 @@ export default function ChatApp() {
           <p className="text-red-400 mt-6 text-sm animate-pulse font-medium tracking-wide">
             This photo has been instantly deleted from the database.
           </p>
+        </div>
+      )}
+
+      {/* Message Info Modal */}
+      {showInfoForMsg && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowInfoForMsg(null)}>
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm border border-gray-800 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Message Info</h3>
+            
+            <div className="mb-4 bg-gray-800 p-3 rounded-xl break-words text-sm text-gray-200 shadow-inner">
+              {showInfoForMsg.message_type === "text" && <p>{showInfoForMsg.content}</p>}
+              {showInfoForMsg.message_type === "image" && <span className="italic text-gray-400 flex items-center gap-2">📷 Image Media</span>}
+              {showInfoForMsg.message_type === "audio" && <span className="italic text-gray-400 flex items-center gap-2">🎙️ Voice Note</span>}
+              {showInfoForMsg.message_type === "image_once" && <span className="italic text-red-400 flex items-center gap-2">💣 View-Once Photo</span>}
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-sm border-b border-gray-800/50 pb-3">
+                <span className="text-gray-400 flex items-center gap-2"><span className="text-gray-500 font-bold">✓</span> Delivered</span>
+                <span className="text-gray-200">{new Date(showInfoForMsg.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              </div>
+              
+              <div className="flex justify-between items-start text-sm">
+                <span className="text-gray-400 flex items-center gap-2"><span className="text-cyan-400 font-bold tracking-tighter">✓✓</span> Read</span>
+                <div className="text-right">
+                  {showInfoForMsg.read ? (
+                    <>
+                      <div className="text-gray-200">{new Date(showInfoForMsg.read_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                      {showInfoForMsg.read_by_ip && <div className="text-xs text-blue-400 mt-1 bg-blue-500/10 inline-block px-2 py-0.5 rounded font-mono">IP: {showInfoForMsg.read_by_ip}</div>}
+                    </>
+                  ) : (
+                    <span className="text-gray-500 italic">Not read yet...</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <button onClick={() => setShowInfoForMsg(null)} className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition shadow-md">
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>
