@@ -677,8 +677,14 @@ export default function ChatApp() {
                 <div className="text-right">
                   {showInfoForMsg.read ? (
                     <>
-                      <div className="text-gray-200">{new Date(showInfoForMsg.read_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div>
-                      {showInfoForMsg.read_by_ip && <div className="text-xs text-blue-400 mt-1 bg-blue-500/10 inline-block px-2 py-0.5 rounded font-mono">IP: {showInfoForMsg.read_by_ip}</div>}
+                      <div className="text-gray-200">
+                        {showInfoForMsg.read_at 
+                          ? new Date(showInfoForMsg.read_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+                          : <span className="italic text-gray-500">Time Unavailable</span>}
+                      </div>
+                      <div className="text-xs text-blue-400 mt-1 bg-blue-500/10 inline-block px-2 py-0.5 rounded font-mono">
+                        IP: {showInfoForMsg.read_by_ip || "Hidden/Unavailable"}
+                      </div>
                     </>
                   ) : (
                     <span className="text-gray-500 italic">Not read yet...</span>
