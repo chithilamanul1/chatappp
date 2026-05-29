@@ -120,6 +120,17 @@ export default function ChatApp() {
   const [showInfoForMsg, setShowInfoForMsg] = useState<any | null>(null);
   const [isViewOnce, setIsViewOnce] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  
+  // WebRTC Call State
+  const [callState, setCallState] = useState<"idle" | "calling" | "ringing" | "connected">("idle");
+  const [isVideoCall, setIsVideoCall] = useState(true);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const callChannelRef = useRef<any>(null);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -261,8 +272,43 @@ export default function ChatApp() {
       )
       .subscribe();
 
+    // WebRTC Signaling Channel
+    const callChannel = supabase.channel(`call-${room}`);
+    callChannelRef.current = callChannel;
+
+    callChannel.on("broadcast", { event: "offer" }, async ({ payload }) => {
+      if (payload.sender === currentUser) return;
+      setIsVideoCall(payload.isVideo);
+      setCallState("ringing");
+      pcRef.current = createPeerConnection();
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+    });
+
+    callChannel.on("broadcast", { event: "answer" }, async ({ payload }) => {
+      if (payload.sender === currentUser) return;
+      if (pcRef.current) {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        setCallState("connected");
+      }
+    });
+
+    callChannel.on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
+      if (payload.sender === currentUser) return;
+      if (pcRef.current && payload.candidate) {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(console.error);
+      }
+    });
+
+    callChannel.on("broadcast", { event: "end-call" }, ({ payload }) => {
+      if (payload.sender === currentUser) return;
+      cleanupCall();
+    });
+
+    callChannel.subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(callChannel);
     };
   }, [isLoggedIn, currentUser, chatPartner, room]);
 
@@ -367,7 +413,123 @@ export default function ChatApp() {
     setUsername("");
     setPassword("");
     setMessages([]);
+    cleanupCall();
   };
+
+  // --- WebRTC Logic ---
+  const createPeerConnection = () => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    });
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        callChannelRef.current?.send({
+          type: "broadcast",
+          event: "ice-candidate",
+          payload: { candidate: event.candidate, sender: currentUser }
+        });
+      }
+    };
+
+    pc.ontrack = (event) => {
+      remoteStreamRef.current = event.streams[0];
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+      }
+    };
+
+    return pc;
+  };
+
+  const initiateCall = async (video: boolean) => {
+    setIsVideoCall(video);
+    setCallState("calling");
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
+      localStreamRef.current = stream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      const pc = createPeerConnection();
+      pcRef.current = pc;
+
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      callChannelRef.current?.send({
+        type: "broadcast",
+        event: "offer",
+        payload: { sdp: offer, isVideo: video, sender: currentUser }
+      });
+    } catch (e) {
+      console.error(e);
+      setCallState("idle");
+      alert("Camera/Microphone access denied.");
+    }
+  };
+
+  const acceptCall = async () => {
+    setCallState("connected");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: isVideoCall, audio: true });
+      localStreamRef.current = stream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      const pc = pcRef.current;
+      if (!pc) return;
+
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      callChannelRef.current?.send({
+        type: "broadcast",
+        event: "answer",
+        payload: { sdp: answer, sender: currentUser }
+      });
+    } catch (e) {
+      console.error(e);
+      endCall();
+    }
+  };
+
+  const endCall = () => {
+    callChannelRef.current?.send({
+      type: "broadcast",
+      event: "end-call",
+      payload: { sender: currentUser }
+    });
+    cleanupCall();
+  };
+
+  const cleanupCall = () => {
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    remoteStreamRef.current = null;
+    setCallState("idle");
+  };
+
+  useEffect(() => {
+    if (callState === "connected" || callState === "calling") {
+      if (localVideoRef.current && localStreamRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+      }
+      if (remoteVideoRef.current && remoteStreamRef.current) {
+        remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      }
+    }
+  }, [callState]);
+  // --------------------
 
   const handleDeleteMessage = async (id: string) => {
     await supabase.from("messages").delete().eq("id", id);
@@ -522,9 +684,17 @@ export default function ChatApp() {
             )}
           </div>
         </div>
-        <button onClick={handleLogout} className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-400 hover:text-white">
-          Sign Out
-        </button>
+        <div className="flex items-center gap-3">
+          {isPartnerOnline && (
+            <div className="flex gap-1.5 sm:gap-2">
+              <button onClick={() => initiateCall(false)} className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Voice Call">📞</button>
+              <button onClick={() => initiateCall(true)} className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Video Call">📹</button>
+            </div>
+          )}
+          <button onClick={handleLogout} className="rounded-lg bg-gray-800 px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700 transition">
+            Sign Out
+          </button>
+        </div>
       </header>
 
       {/* Chat Area */}
@@ -705,6 +875,81 @@ export default function ChatApp() {
               Close
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Call UI Overlay */}
+      {callState !== "idle" && (
+        <div className="fixed inset-0 z-[200] bg-gray-950 flex flex-col">
+          {callState === "ringing" && (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-4xl mb-6 animate-bounce shadow-[0_0_30px_rgba(37,99,235,0.5)]">
+                {isVideoCall ? "📹" : "📞"}
+              </div>
+              <h2 className="text-2xl font-semibold text-white mb-2">Live Tutor Session</h2>
+              <p className="text-gray-400 mb-12">Incoming Request...</p>
+              
+              <div className="flex gap-8">
+                <button onClick={endCall} className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:scale-105 transition">
+                  ✖
+                </button>
+                <button onClick={acceptCall} className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-105 transition animate-pulse">
+                  📞
+                </button>
+              </div>
+            </div>
+          )}
+
+          {callState === "calling" && (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center text-4xl mb-6 border-2 border-gray-700">
+                {isVideoCall ? "📹" : "📞"}
+              </div>
+              <h2 className="text-2xl font-semibold text-white mb-2">Requesting Session...</h2>
+              <p className="text-gray-400 mb-12 animate-pulse">Waiting for answer...</p>
+              
+              <button onClick={endCall} className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-lg hover:scale-105 transition">
+                ✖
+              </button>
+            </div>
+          )}
+
+          {callState === "connected" && (
+            <div className="flex-1 relative bg-black">
+              {/* Remote Video */}
+              <video 
+                ref={remoteVideoRef} 
+                autoPlay 
+                playsInline 
+                className={`w-full h-full object-cover ${isVideoCall ? "" : "hidden"}`}
+              />
+              
+              {/* Audio Only Avatar for Remote */}
+              {!isVideoCall && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                  <div className="w-32 h-32 bg-gray-800 rounded-full flex items-center justify-center text-5xl border border-gray-700 shadow-2xl">🎧</div>
+                </div>
+              )}
+
+              {/* Local Video PiP */}
+              <div className={`absolute top-4 right-4 w-24 sm:w-32 aspect-[3/4] bg-gray-800 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700 z-10 ${isVideoCall ? "" : "hidden"}`}>
+                <video 
+                  ref={localVideoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              {/* Controls */}
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-6 bg-gray-900/80 p-4 rounded-full backdrop-blur-md border border-gray-800 z-10">
+                <button onClick={endCall} className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-xl shadow-[0_0_15px_rgba(239,68,68,0.5)] hover:bg-red-600 transition hover:scale-105">
+                  📞
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
