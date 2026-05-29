@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Calculus 101 Notes",
-  description: "Advanced calculus study portal and interactive student resources.",
+  title: "Free E-Book Library",
+  description: "Download free PDF textbooks, study guides, and e-books.",
 };
 
 export default function RootLayout({
