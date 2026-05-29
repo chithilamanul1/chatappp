@@ -132,6 +132,11 @@ export default function ChatApp() {
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const callChannelRef = useRef<any>(null);
 
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const dbChannelRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -271,7 +276,14 @@ export default function ChatApp() {
           }
         }
       )
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        if (payload.sender !== currentUser) {
+          setIsPartnerTyping(payload.isTyping);
+        }
+      })
       .subscribe();
+
+    dbChannelRef.current = channel;
 
     // WebRTC Signaling Channel
     const callChannel = supabase.channel(`call-${room}`);
@@ -556,12 +568,55 @@ export default function ChatApp() {
     await supabase.from("messages").delete().eq("id", msg.id);
   };
 
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    if (dbChannelRef.current) {
+      dbChannelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: { sender: currentUser, isTyping: e.target.value.length > 0 }
+      });
+    }
+
+    // Auto clear typing status if they stop typing for 3 seconds
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      if (dbChannelRef.current) {
+        dbChannelRef.current.send({
+          type: "broadcast",
+          event: "typing",
+          payload: { sender: currentUser, isTyping: false }
+        });
+      }
+    }, 3000);
+  };
+
   const sendTextMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    const text = newMessage;
+    let text = newMessage;
+    
+    // Format reply into the text without changing DB schema
+    if (replyingTo) {
+      const replyPreview = replyingTo.message_type === "text" 
+        ? replyingTo.content.substring(0, 50)
+        : `[${replyingTo.message_type.toUpperCase()}]`;
+      text = `::REPLY::${replyPreview}::ENDREPLY::${text}`;
+    }
+
     setNewMessage(""); // Clear input instantly
+    setReplyingTo(null);
+
+    // Clear typing status instantly
+    if (dbChannelRef.current) {
+      dbChannelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: { sender: currentUser, isTyping: false }
+      });
+    }
 
     const { data, error } = await supabase.from("messages").insert([
       { sender: currentUser, message_type: "text", content: text, read: false },
@@ -690,8 +745,12 @@ export default function ChatApp() {
             {isPartnerOnline ? (
               <>
                 <span className="text-green-400 font-medium">● Online</span>
-                {(partnerIp || partnerLocation) && (
-                  <span className="text-[9px] opacity-70 mt-0.5">{partnerIp} • {partnerLocation}</span>
+                {isPartnerTyping ? (
+                  <span className="text-blue-400 font-medium animate-pulse mt-0.5">typing...</span>
+                ) : (
+                  (partnerIp || partnerLocation) && (
+                    <span className="text-[9px] opacity-70 mt-0.5">{partnerIp} • {partnerLocation}</span>
+                  )
                 )}
               </>
             ) : (
@@ -727,11 +786,20 @@ export default function ChatApp() {
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
               <div 
-                className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-800 text-gray-100"} break-words transition-all`}
-                onClick={() => { if (isMe) setActiveMsgId(activeMsgId === msg.id ? null : msg.id); }}
+                className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-800 text-gray-100 cursor-pointer"} break-words transition-all`}
+                onClick={() => setActiveMsgId(activeMsgId === msg.id ? null : msg.id)}
               >
-                {isMe && activeMsgId === msg.id && (
-                  <div className="absolute -left-20 top-1/2 -translate-y-1/2 flex gap-1 z-10">
+                {activeMsgId === msg.id && (
+                  <div className={`absolute ${isMe ? "-left-28" : "-right-28"} top-1/2 -translate-y-1/2 flex gap-1 z-10`}>
+                    {!isMe && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); setActiveMsgId(null); }}
+                        className="bg-gray-700 hover:bg-gray-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                        title="Reply"
+                      >
+                        ↩️
+                      </button>
+                    )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); setShowInfoForMsg(msg); setActiveMsgId(null); }}
                       className="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
@@ -739,17 +807,32 @@ export default function ChatApp() {
                     >
                       ℹ️
                     </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
-                      className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
-                      title="Delete Message"
-                    >
-                      🗑️
-                    </button>
+                    {isMe && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                        className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                        title="Delete Message"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 )}
 
-                {msg.message_type === "text" && <p>{msg.content}</p>}
+                {msg.message_type === "text" && (
+                  <div>
+                    {msg.content.startsWith("::REPLY::") ? (
+                      <>
+                        <div className="bg-black/20 border-l-4 border-white/50 p-2 rounded mb-2 text-xs opacity-80 italic overflow-hidden whitespace-nowrap text-ellipsis">
+                          {msg.content.split("::ENDREPLY::")[0].replace("::REPLY::", "")}
+                        </div>
+                        <p>{msg.content.split("::ENDREPLY::")[1]}</p>
+                      </>
+                    ) : (
+                      <p>{msg.content}</p>
+                    )}
+                  </div>
+                )}
                 {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
                 {msg.message_type === "audio" && <CustomAudioPlayer src={msg.content} isMe={isMe} />}
                 {msg.message_type === "image_once" && (
@@ -788,7 +871,19 @@ export default function ChatApp() {
       </div>
 
       {/* Inputs */}
-      <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800">
+      <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800 flex flex-col">
+        {replyingTo && (
+          <div className="bg-gray-800 border-l-4 border-blue-500 p-2 mb-2 rounded flex justify-between items-center text-sm text-gray-300">
+            <div className="truncate pr-4">
+              <span className="font-semibold text-blue-400 mr-2">Replying to:</span>
+              {replyingTo.message_type === "text" 
+                ? (replyingTo.content.includes("::ENDREPLY::") ? replyingTo.content.split("::ENDREPLY::")[1] : replyingTo.content)
+                : `[${replyingTo.message_type.toUpperCase()}]`}
+            </div>
+            <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-white px-2">✕</button>
+          </div>
+        )}
+
         {isRecording ? (
           <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-blue-600/20 border border-blue-500/30">
             <span className="text-blue-500 font-medium flex items-center gap-3 px-2">
@@ -828,7 +923,7 @@ export default function ChatApp() {
               type="text"
               placeholder="Search ISBN or Book Title..."
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={handleTyping}
               className="flex-1 min-w-0 rounded-xl bg-gray-800 px-3 py-2 text-sm sm:text-base text-white focus:outline-none"
             />
             <button type="submit" disabled={uploading} className="rounded-xl bg-blue-600 px-3 py-2 text-sm sm:text-base font-medium whitespace-nowrap flex-shrink-0 transition hover:bg-blue-500 disabled:opacity-50">
