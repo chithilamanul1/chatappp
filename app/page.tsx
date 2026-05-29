@@ -120,6 +120,20 @@ export default function ChatApp() {
   const [showInfoForMsg, setShowInfoForMsg] = useState<any | null>(null);
   const [isViewOnce, setIsViewOnce] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [showStickers, setShowStickers] = useState(false);
+  
+  const stickers = [
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f97a/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f62d/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f92c/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f618/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f44e/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/2728/512.gif",
+    "https://fonts.gstatic.com/s/e/notoemoji/latest/1f525/512.gif"
+  ];
   
   // WebRTC Call State
   const [callState, setCallState] = useState<"idle" | "calling" | "ringing" | "connected">("idle");
@@ -636,6 +650,30 @@ export default function ChatApp() {
     }, 3000);
   };
 
+  const sendSticker = async (url: string) => {
+    setShowStickers(false);
+    let text = url;
+    
+    if (replyingTo) {
+      const replyPreview = replyingTo.message_type === "text" 
+        ? replyingTo.content.substring(0, 50)
+        : `[${replyingTo.message_type.toUpperCase()}]`;
+      text = `::REPLY::${replyPreview}::ENDREPLY::${text}`;
+      setReplyingTo(null);
+    }
+
+    const { data, error } = await supabase.from("messages").insert([
+      { sender: currentUser, message_type: "sticker", content: text, read: false },
+    ]).select();
+
+    if (data && data.length > 0) {
+      setMessages((prev) => {
+        if (prev.find(m => m.id === data[0].id)) return prev;
+        return [...prev, data[0]];
+      });
+    }
+  };
+
   const sendTextMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -830,7 +868,7 @@ export default function ChatApp() {
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
               <div 
-                className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-800 text-gray-100 cursor-pointer"} break-words transition-all mb-2`}
+                className={`relative max-w-[85%] sm:max-w-[75%] p-3 ${msg.message_type === 'sticker' ? 'bg-transparent' : (isMe ? "bg-blue-600 text-white rounded-2xl" : "bg-gray-800 text-gray-100 rounded-2xl")} cursor-pointer break-words transition-all mb-2`}
                 onClick={() => setActiveMsgId(activeMsgId === msg.id ? null : msg.id)}
               >
                 {activeMsgId === msg.id && (
@@ -888,6 +926,7 @@ export default function ChatApp() {
                 )}
                 {msg.message_type === "image" && <img src={getBaseContent(msg.content)} alt="Media" className="rounded-lg max-w-full" />}
                 {msg.message_type === "audio" && <CustomAudioPlayer src={getBaseContent(msg.content)} isMe={isMe} />}
+                {msg.message_type === "sticker" && <img src={getBaseContent(msg.content)} alt="Sticker" className="w-32 h-32 object-contain drop-shadow-2xl" />}
                 {msg.message_type === "image_once" && (
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-xl">💣</span>
@@ -934,7 +973,17 @@ export default function ChatApp() {
       </div>
 
       {/* Inputs */}
-      <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800 flex flex-col">
+      <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800 flex flex-col relative">
+        {showStickers && (
+          <div className="absolute bottom-full left-0 right-0 bg-gray-800 border-t border-gray-700 p-3 grid grid-cols-4 sm:grid-cols-5 gap-3 max-h-56 overflow-y-auto rounded-t-2xl shadow-2xl z-50 animate-fade-in-up">
+            {stickers.map((url, i) => (
+              <button key={i} type="button" onClick={() => sendSticker(url)} className="p-2 hover:bg-gray-700 rounded-xl transition transform hover:scale-110 flex items-center justify-center">
+                <img src={url} alt="Sticker" className="w-16 h-16 object-contain drop-shadow-md" />
+              </button>
+            ))}
+          </div>
+        )}
+
         {replyingTo && (
           <div className="bg-gray-800 border-l-4 border-blue-500 p-2 mb-2 rounded flex justify-between items-center text-sm text-gray-300">
             <div className="truncate pr-4">
@@ -963,6 +1012,14 @@ export default function ChatApp() {
           </div>
         ) : (
           <form onSubmit={sendTextMessage} className="flex items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setShowStickers(!showStickers)}
+              className={`cursor-pointer text-xl p-1 sm:p-2 rounded-full flex-shrink-0 transition-colors ${showStickers ? "bg-blue-500/20 text-blue-400" : "hover:bg-gray-800 grayscale opacity-50 text-white"}`}
+              title="Stickers"
+            >
+              🐶
+            </button>
             <button
               type="button"
               onClick={() => setIsViewOnce(!isViewOnce)}
