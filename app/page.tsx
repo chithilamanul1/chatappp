@@ -111,10 +111,25 @@ export default function ChatApp() {
   const [newMessage, setNewMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [isPartnerOnline, setIsPartnerOnline] = useState(false);
+  const [partnerIp, setPartnerIp] = useState("");
+  const [partnerLocation, setPartnerLocation] = useState("");
+  const [myIp, setMyIp] = useState("");
+  const [myLocation, setMyLocation] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Fetch my IP and Location
+  useEffect(() => {
+    fetch("https://ipapi.co/json/")
+      .then(res => res.json())
+      .then(data => {
+        if (data.ip) setMyIp(data.ip);
+        if (data.city) setMyLocation(`${data.city}, ${data.country_name}`);
+      })
+      .catch(console.error);
+  }, []);
 
   // Check for saved session on load
   useEffect(() => {
@@ -167,23 +182,36 @@ export default function ChatApp() {
         const newState = presenceChannel.presenceState();
         
         let online = false;
+        let pIp = "";
+        let pLoc = "";
+        
         for (const id in newState) {
-          if ((newState[id][0] as any)?.user_id === chatPartner) {
+          const stateData: any = newState[id][0];
+          if (stateData?.user_id === chatPartner) {
             online = true;
+            pIp = stateData.ip || "";
+            pLoc = stateData.location || "";
           }
         }
         setIsPartnerOnline(online);
+        setPartnerIp(pIp);
+        setPartnerLocation(pLoc);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({ user_id: currentUser, online_at: new Date().toISOString() });
+          await presenceChannel.track({ 
+            user_id: currentUser, 
+            online_at: new Date().toISOString(),
+            ip: myIp,
+            location: myLocation
+          });
         }
       });
 
     return () => {
       supabase.removeChannel(presenceChannel);
     };
-  }, [isLoggedIn, currentUser, chatPartner, room]);
+  }, [isLoggedIn, currentUser, chatPartner, room, myIp, myLocation]);
 
   // Fetch and Listen for Live Messages
   useEffect(() => {
@@ -453,13 +481,18 @@ export default function ChatApp() {
       <header className="flex items-center justify-between bg-gray-900 p-3 sm:p-4 border-b border-gray-800">
         <div className="flex flex-col">
           <span className="font-medium text-blue-400">PDF E-Book Library</span>
-          <span className="text-xs text-gray-400">
+          <div className="text-xs text-gray-400 flex flex-col mt-0.5">
             {isPartnerOnline ? (
-              <span className="text-green-400 font-medium">● Online</span>
+              <>
+                <span className="text-green-400 font-medium">● Online</span>
+                {(partnerIp || partnerLocation) && (
+                  <span className="text-[9px] opacity-70 mt-0.5">{partnerIp} • {partnerLocation}</span>
+                )}
+              </>
             ) : (
               <span>○ Offline</span>
             )}
-          </span>
+          </div>
         </div>
         <button onClick={handleLogout} className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-400 hover:text-white">
           Sign Out
