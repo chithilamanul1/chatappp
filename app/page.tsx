@@ -15,6 +15,7 @@ export default function ChatApp() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [isPartnerOnline, setIsPartnerOnline] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Check for saved session on load
@@ -49,6 +50,36 @@ export default function ChatApp() {
       window.removeEventListener("pagehide", handlePageHide);
     };
   }, [currentUser]);
+
+  // Online/Offline Presence Tracking
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const roomOne = supabase.channel('presence-room');
+    
+    roomOne
+      .on('presence', { event: 'sync' }, () => {
+        const newState = roomOne.presenceState();
+        const partnerId = currentUser === 'i' ? 'user2' : 'i';
+        
+        let online = false;
+        for (const id in newState) {
+          if (newState[id][0]?.user_id === partnerId) {
+            online = true;
+          }
+        }
+        setIsPartnerOnline(online);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await roomOne.track({ user_id: currentUser, online_at: new Date().toISOString() });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(roomOne);
+    };
+  }, [isLoggedIn, currentUser]);
 
   // Fetch and Listen for Live Messages
   useEffect(() => {
@@ -185,7 +216,16 @@ export default function ChatApp() {
     <div className="flex h-[100dvh] w-full flex-col bg-gray-950 text-white max-w-md mx-auto sm:border-x border-gray-800">
       {/* Header */}
       <header className="flex items-center justify-between bg-gray-900 p-3 sm:p-4 border-b border-gray-800">
-        <span className="font-medium text-pink-400">Us Only ❤️</span>
+        <div className="flex flex-col">
+          <span className="font-medium text-pink-400">Us Only ❤️</span>
+          <span className="text-xs text-gray-400">
+            {isPartnerOnline ? (
+              <span className="text-green-400 font-medium">● Online</span>
+            ) : (
+              <span>○ Offline</span>
+            )}
+          </span>
+        </div>
         <button onClick={handleLogout} className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-400 hover:text-white">
           Lock
         </button>
@@ -201,6 +241,9 @@ export default function ChatApp() {
                 {msg.message_type === "text" && <p>{msg.content}</p>}
                 {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
                 {msg.message_type === "audio" && <audio src={msg.content} controls className="w-full max-w-[200px]" />}
+                <span className={`block text-[10px] mt-1 opacity-70 ${isMe ? "text-right" : "text-left"}`}>
+                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </div>
             </div>
           );
