@@ -124,6 +124,7 @@ export default function ChatApp() {
   // WebRTC Call State
   const [callState, setCallState] = useState<"idle" | "calling" | "ringing" | "connected">("idle");
   const [isVideoCall, setIsVideoCall] = useState(true);
+  const [hasLocalVideo, setHasLocalVideo] = useState(false);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -445,56 +446,70 @@ export default function ChatApp() {
   const initiateCall = async (video: boolean) => {
     setIsVideoCall(video);
     setCallState("calling");
+    setHasLocalVideo(false);
     
+    const pc = createPeerConnection();
+    pcRef.current = pc;
+
+    let hasLocalMedia = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
       localStreamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-      const pc = createPeerConnection();
-      pcRef.current = pc;
-
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      callChannelRef.current?.send({
-        type: "broadcast",
-        event: "offer",
-        payload: { sdp: offer, isVideo: video, sender: currentUser }
-      });
+      hasLocalMedia = true;
+      if (video) setHasLocalVideo(true);
     } catch (e) {
-      console.error(e);
-      setCallState("idle");
-      alert("Camera/Microphone access denied.");
+      console.warn("Local media not available, switching to receive-only mode.", e);
     }
+
+    if (!hasLocalMedia) {
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+      if (video) pc.addTransceiver('video', { direction: 'recvonly' });
+    }
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    callChannelRef.current?.send({
+      type: "broadcast",
+      event: "offer",
+      payload: { sdp: offer, isVideo: video, sender: currentUser }
+    });
   };
 
   const acceptCall = async () => {
     setCallState("connected");
+    setHasLocalVideo(false);
+
+    const pc = pcRef.current;
+    if (!pc) return;
+
+    let hasLocalMedia = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: isVideoCall, audio: true });
       localStreamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-      const pc = pcRef.current;
-      if (!pc) return;
-
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-
-      callChannelRef.current?.send({
-        type: "broadcast",
-        event: "answer",
-        payload: { sdp: answer, sender: currentUser }
-      });
+      hasLocalMedia = true;
+      if (isVideoCall) setHasLocalVideo(true);
     } catch (e) {
-      console.error(e);
-      endCall();
+      console.warn("Local media not available, switching to receive-only mode.", e);
     }
+
+    if (!hasLocalMedia) {
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+      if (isVideoCall) pc.addTransceiver('video', { direction: 'recvonly' });
+    }
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+
+    callChannelRef.current?.send({
+      type: "broadcast",
+      event: "answer",
+      payload: { sdp: answer, sender: currentUser }
+    });
   };
 
   const endCall = () => {
@@ -932,7 +947,7 @@ export default function ChatApp() {
               )}
 
               {/* Local Video PiP */}
-              <div className={`absolute top-4 right-4 w-24 sm:w-32 aspect-[3/4] bg-gray-800 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700 z-10 ${isVideoCall ? "" : "hidden"}`}>
+              <div className={`absolute top-4 right-4 w-24 sm:w-32 aspect-[3/4] bg-gray-800 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700 z-10 ${hasLocalVideo ? "" : "hidden"}`}>
                 <video 
                   ref={localVideoRef} 
                   autoPlay 
