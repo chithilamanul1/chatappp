@@ -248,25 +248,25 @@ export default function ChatApp() {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950 p-4">
         <form onSubmit={handleLogin} className="w-full max-w-sm rounded-2xl bg-gray-900 p-6 shadow-xl border border-gray-800">
-          <h2 className="mb-6 text-center text-xl font-semibold text-white tracking-wide">Secure Access</h2>
+          <h2 className="mb-6 text-center text-xl font-semibold text-white tracking-wide">Student Portal Login</h2>
           <input
             type="text"
-            placeholder="Username"
+            placeholder="Student ID"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="mb-3 w-full rounded-xl bg-gray-800 p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            className="mb-3 w-full rounded-xl bg-gray-800 p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder="Access Code"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mb-6 w-full rounded-xl bg-gray-800 p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            className="mb-6 w-full rounded-xl bg-gray-800 p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
-          <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 p-3 font-semibold text-white transition hover:opacity-90">
-            Enter Chat
+          <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 p-3 font-semibold text-white transition hover:opacity-90">
+            Access Study Materials
           </button>
         </form>
       </div>
@@ -278,7 +278,7 @@ export default function ChatApp() {
       {/* Header */}
       <header className="flex items-center justify-between bg-gray-900 p-3 sm:p-4 border-b border-gray-800">
         <div className="flex flex-col">
-          <span className="font-medium text-pink-400">Us Only ❤️</span>
+          <span className="font-medium text-blue-400">Calculus 101 Notes</span>
           <span className="text-xs text-gray-400">
             {isPartnerOnline ? (
               <span className="text-green-400 font-medium">● Online</span>
@@ -288,7 +288,7 @@ export default function ChatApp() {
           </span>
         </div>
         <button onClick={handleLogout} className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-400 hover:text-white">
-          Lock
+          Save Progress
         </button>
       </header>
 
@@ -298,7 +298,7 @@ export default function ChatApp() {
           const isMe = msg.sender === currentUser;
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-pink-600 text-white" : "bg-gray-800 text-gray-100"} break-words`}>
+              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-100"} break-words`}>
                 {msg.message_type === "text" && <p>{msg.content}</p>}
                 {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
                 {msg.message_type === "audio" && <audio src={msg.content} controls className="w-full max-w-[200px]" />}
@@ -315,15 +315,15 @@ export default function ChatApp() {
       {/* Inputs */}
       <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800">
         {isRecording ? (
-          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-pink-600/20 border border-pink-500/30">
-            <span className="text-pink-500 font-medium flex items-center gap-3 px-2">
-              <span className="w-3 h-3 rounded-full bg-pink-500 animate-pulse"></span>
+          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-blue-600/20 border border-blue-500/30">
+            <span className="text-blue-500 font-medium flex items-center gap-3 px-2">
+              <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
               Recording Voice...
             </span>
             <button 
               type="button" 
               onClick={stopRecording} 
-              className="rounded-xl bg-pink-600 px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap text-white"
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap text-white"
             >
               Send
             </button>
@@ -348,7 +348,7 @@ export default function ChatApp() {
               onChange={(e) => setNewMessage(e.target.value)}
               className="flex-1 min-w-0 rounded-xl bg-gray-800 px-3 py-2 text-sm sm:text-base text-white focus:outline-none"
             />
-            <button type="submit" disabled={uploading} className="rounded-xl bg-pink-600 px-3 py-2 text-sm sm:text-base font-medium whitespace-nowrap flex-shrink-0 transition hover:bg-pink-500 disabled:opacity-50">
+            <button type="submit" disabled={uploading} className="rounded-xl bg-blue-600 px-3 py-2 text-sm sm:text-base font-medium whitespace-nowrap flex-shrink-0 transition hover:bg-blue-500 disabled:opacity-50">
               {uploading ? "..." : "Send"}
             </button>
           </form>
