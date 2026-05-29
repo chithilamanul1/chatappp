@@ -105,6 +105,8 @@ export default function ChatApp() {
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState("");
+  const [chatPartner, setChatPartner] = useState("");
+  const [room, setRoom] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -119,21 +121,28 @@ export default function ChatApp() {
     const savedUser = localStorage.getItem("chat_user");
     if (savedUser === "user2") {
       setCurrentUser("user2");
+      setChatPartner("i");
+      setRoom("room1");
+      setIsLoggedIn(true);
+    } else if (savedUser === "alex") {
+      setCurrentUser("alex");
+      setChatPartner("sarah");
+      setRoom("room2");
       setIsLoggedIn(true);
     }
   }, []);
 
   // CRITICAL SECURITY: Log out if she goes to the home screen or minimizes the app
-  // This now ONLY applies to her ('i'), allowing you ('user2') to stay logged in
+  // This now ONLY applies to the girls ('i' and 'sarah'), allowing guys to stay logged in
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && currentUser === "i") {
+      if (document.visibilityState === "hidden" && (currentUser === "i" || currentUser === "sarah")) {
         handleLogout();
       }
     };
 
     const handlePageHide = () => {
-      if (currentUser === "i") {
+      if (currentUser === "i" || currentUser === "sarah") {
         handleLogout();
       }
     };
@@ -149,18 +158,17 @@ export default function ChatApp() {
 
   // Online/Offline Presence Tracking
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !room) return;
 
-    const roomOne = supabase.channel('presence-room');
+    const presenceChannel = supabase.channel(`presence-${room}`);
     
-    roomOne
+    presenceChannel
       .on('presence', { event: 'sync' }, () => {
-        const newState = roomOne.presenceState();
-        const partnerId = currentUser === 'i' ? 'user2' : 'i';
+        const newState = presenceChannel.presenceState();
         
         let online = false;
         for (const id in newState) {
-          if ((newState[id][0] as any)?.user_id === partnerId) {
+          if ((newState[id][0] as any)?.user_id === chatPartner) {
             online = true;
           }
         }
@@ -168,24 +176,25 @@ export default function ChatApp() {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await roomOne.track({ user_id: currentUser, online_at: new Date().toISOString() });
+          await presenceChannel.track({ user_id: currentUser, online_at: new Date().toISOString() });
         }
       });
 
     return () => {
-      supabase.removeChannel(roomOne);
+      supabase.removeChannel(presenceChannel);
     };
-  }, [isLoggedIn, currentUser]);
+  }, [isLoggedIn, currentUser, chatPartner, room]);
 
   // Fetch and Listen for Live Messages
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !chatPartner) return;
 
     // Initial fetch
     const fetchMessages = async () => {
       const { data } = await supabase
         .from("messages")
         .select("*")
+        .in("sender", [currentUser, chatPartner])
         .order("created_at", { ascending: true });
       if (data) setMessages(data);
     };
@@ -193,19 +202,25 @@ export default function ChatApp() {
 
     // Realtime subscription
     const channel = supabase
-      .channel("schema-db-changes")
+      .channel(`db-changes-${room}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setMessages((prev) => {
-              if (prev.find(m => m.id === payload.new.id)) return prev;
-              return [...prev, payload.new];
-            });
+            const sender = payload.new.sender;
+            if (sender === currentUser || sender === chatPartner) {
+              setMessages((prev) => {
+                if (prev.find(m => m.id === payload.new.id)) return prev;
+                return [...prev, payload.new];
+              });
+            }
           }
           if (payload.eventType === "UPDATE") {
-            setMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
+            const sender = payload.new.sender;
+            if (sender === currentUser || sender === chatPartner) {
+              setMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
+            }
           }
         }
       )
@@ -214,7 +229,7 @@ export default function ChatApp() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, currentUser, chatPartner, room]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -267,29 +282,44 @@ export default function ChatApp() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple custom authentication logic
     if (username === "i" && password === "gemba") {
       setCurrentUser("i");
+      setChatPartner("user2");
+      setRoom("room1");
       setIsLoggedIn(true);
     } else if (username === "user2" && password === "pass2") { 
-      // Replace user2/pass2 with your own login details
       setCurrentUser("user2");
+      setChatPartner("i");
+      setRoom("room1");
       setIsLoggedIn(true);
-      localStorage.setItem("chat_user", "user2"); // Save session for you
+      localStorage.setItem("chat_user", "user2"); 
+    } else if (username === "sarah" && password === "pass123") {
+      setCurrentUser("sarah");
+      setChatPartner("alex");
+      setRoom("room2");
+      setIsLoggedIn(true);
+    } else if (username === "alex" && password === "pass123") {
+      setCurrentUser("alex");
+      setChatPartner("sarah");
+      setRoom("room2");
+      setIsLoggedIn(true);
+      localStorage.setItem("chat_user", "alex"); 
     } else {
       alert("Wrong credentials");
     }
   };
 
   const handleLogout = async () => {
-    // Stealth feature: wipe all chat messages from the database when logging out
-    if (currentUser) {
-      await supabase.from("messages").delete().neq("sender", "none");
+    // Stealth feature: wipe chat messages from the database when logging out
+    if (currentUser && chatPartner) {
+      await supabase.from("messages").delete().in("sender", [currentUser, chatPartner]);
     }
 
-    localStorage.removeItem("chat_user"); // Clear your saved session if you manually lock
+    localStorage.removeItem("chat_user"); 
     setIsLoggedIn(false);
     setCurrentUser("");
+    setChatPartner("");
+    setRoom("");
     setUsername("");
     setPassword("");
     setMessages([]);
