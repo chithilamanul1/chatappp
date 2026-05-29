@@ -7,6 +7,99 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supab
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Custom Instagram-style Audio Player
+const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const setAudioData = () => {
+      if (audio.duration !== Infinity) {
+        setDuration(audio.duration);
+      }
+    };
+    
+    const setAudioTime = () => setCurrentTime(audio.currentTime);
+    const setAudioEnd = () => { setIsPlaying(false); setCurrentTime(0); };
+
+    audio.addEventListener('loadedmetadata', setAudioData);
+    audio.addEventListener('timeupdate', setAudioTime);
+    audio.addEventListener('ended', setAudioEnd);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', setAudioData);
+      audio.removeEventListener('timeupdate', setAudioTime);
+      audio.removeEventListener('ended', setAudioEnd);
+    }
+  }, []);
+
+  const formatTime = (time: number) => {
+    if (!time || isNaN(time) || time === Infinity) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const progress = duration > 0 && duration !== Infinity ? (currentTime / duration) * 100 : 0;
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (audioRef.current && duration > 0 && duration !== Infinity) {
+      const bounds = e.currentTarget.getBoundingClientRect();
+      const percent = (e.clientX - bounds.left) / bounds.width;
+      audioRef.current.currentTime = percent * duration;
+    }
+  };
+
+  return (
+    <div className={`flex items-center gap-3 p-2 rounded-2xl ${isMe ? "bg-blue-700/50" : "bg-gray-700/50"} w-[220px] sm:w-[260px] my-1`}>
+      <button 
+        onClick={togglePlay} 
+        className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 text-white shadow-md hover:bg-blue-400 transition"
+      >
+        {isPlaying ? (
+          <span className="w-3 h-3 bg-white rounded-sm"></span>
+        ) : (
+          <span className="ml-1 w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent"></span>
+        )}
+      </button>
+      
+      <div className="flex-1 flex flex-col justify-center">
+        <div 
+          className="w-full h-1.5 bg-gray-400/30 rounded-full overflow-hidden mb-1.5 relative cursor-pointer"
+          onClick={handleSeek}
+        >
+          <div 
+            className="absolute top-0 left-0 h-full bg-white rounded-full transition-all duration-100 ease-linear"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] text-gray-200 font-medium">
+          <span>{formatTime(currentTime)}</span>
+          <span>{duration > 0 && duration !== Infinity ? formatTime(duration) : "Voice"}</span>
+        </div>
+      </div>
+
+      <audio ref={audioRef} src={src} className="hidden" preload="metadata" />
+    </div>
+  );
+};
+
 export default function ChatApp() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -329,7 +422,7 @@ export default function ChatApp() {
               <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-100"} break-words`}>
                 {msg.message_type === "text" && <p>{msg.content}</p>}
                 {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
-                {msg.message_type === "audio" && <audio src={msg.content} controls className="w-full max-w-[200px]" />}
+                {msg.message_type === "audio" && <CustomAudioPlayer src={msg.content} isMe={isMe} />}
                 
                 <div className="flex items-center gap-1 mt-1 justify-end opacity-70 text-[10px]">
                   <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
