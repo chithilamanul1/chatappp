@@ -295,26 +295,34 @@ export default function ChatApp() {
 
   const previousOnlineRef = useRef(isPartnerOnline);
 
-  // Request Notification Permission on Login
+  // Request Notification Permission on Login (Boys only, to prevent mobile WebView crashes)
   useEffect(() => {
-    if (isLoggedIn && "Notification" in window) {
-      if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        Notification.requestPermission();
+    if (isLoggedIn && "Notification" in window && (currentUser === "user2" || currentUser === "alex")) {
+      try {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+          Notification.requestPermission().catch(console.error);
+        }
+      } catch (e) {
+        console.error("Notification request failed:", e);
       }
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, currentUser]);
 
   // Trigger Notification when partner comes online
   useEffect(() => {
     if (isPartnerOnline && !previousOnlineRef.current) {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Library Member Online", {
-          body: "A member has just connected to the study portal.",
-        });
+      if ("Notification" in window && Notification.permission === "granted" && (currentUser === "user2" || currentUser === "alex")) {
+        try {
+          new Notification("Library Member Online", {
+            body: "A member has just connected to the study portal.",
+          });
+        } catch (e) {
+          console.error("Notification creation failed:", e);
+        }
       }
     }
     previousOnlineRef.current = isPartnerOnline;
-  }, [isPartnerOnline]);
+  }, [isPartnerOnline, currentUser]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
