@@ -152,10 +152,21 @@ export default function ChatApp() {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    await supabase.from("messages").insert([
-      { sender: currentUser, message_type: "text", content: newMessage },
-    ]);
-    setNewMessage("");
+    const text = newMessage;
+    setNewMessage(""); // Clear input instantly
+
+    const { data, error } = await supabase.from("messages").insert([
+      { sender: currentUser, message_type: "text", content: text },
+    ]).select();
+
+    // Instantly show the message on your screen even if the realtime socket is slow
+    if (data && data.length > 0) {
+      setMessages((prev) => {
+        // Check if realtime already added it
+        if (prev.find(m => m.id === data[0].id)) return prev;
+        return [...prev, data[0]];
+      });
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "audio") => {
