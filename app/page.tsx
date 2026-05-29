@@ -125,6 +125,9 @@ export default function ChatApp() {
   const [callState, setCallState] = useState<"idle" | "calling" | "ringing" | "connected">("idle");
   const [isVideoCall, setIsVideoCall] = useState(true);
   const [hasLocalVideo, setHasLocalVideo] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -544,6 +547,22 @@ export default function ChatApp() {
     }
     remoteStreamRef.current = null;
     setCallState("idle");
+    setIsMuted(false);
+    setIsVideoOff(false);
+  };
+
+  const toggleMute = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(t => t.enabled = !t.enabled);
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(t => t.enabled = !t.enabled);
+      setIsVideoOff(!isVideoOff);
+    }
   };
 
   useEffect(() => {
@@ -563,8 +582,33 @@ export default function ChatApp() {
     setActiveMsgId(null);
   };
 
+  const getBaseContent = (content: string) => content.split("::REACTIONS::")[0];
+  const getReactions = (content: string) => {
+    if (!content.includes("::REACTIONS::")) return null;
+    try {
+      return JSON.parse(content.split("::REACTIONS::")[1]);
+    } catch (e) { return null; }
+  };
+
+  const handleReaction = async (msg: any, emoji: string) => {
+    const baseContent = getBaseContent(msg.content);
+    const reactions: Record<string, number> = getReactions(msg.content) || {};
+
+    if (reactions[emoji]) {
+      reactions[emoji] += 1;
+    } else {
+      reactions[emoji] = 1;
+    }
+
+    const newContent = `${baseContent}::REACTIONS::${JSON.stringify(reactions)}`;
+
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: newContent } : m));
+    await supabase.from("messages").update({ content: newContent }).eq("id", msg.id);
+    setActiveMsgId(null);
+  };
+
   const handleViewOnce = async (msg: any) => {
-    setFullscreenImage(msg.content);
+    setFullscreenImage(getBaseContent(msg.content));
     await supabase.from("messages").delete().eq("id", msg.id);
   };
 
@@ -786,55 +830,64 @@ export default function ChatApp() {
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
               <div 
-                className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-800 text-gray-100 cursor-pointer"} break-words transition-all`}
+                className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-800 text-gray-100 cursor-pointer"} break-words transition-all mb-2`}
                 onClick={() => setActiveMsgId(activeMsgId === msg.id ? null : msg.id)}
               >
                 {activeMsgId === msg.id && (
-                  <div className={`absolute ${isMe ? "-left-28" : "-right-28"} top-1/2 -translate-y-1/2 flex gap-1 z-10`}>
-                    {!isMe && (
+                  <>
+                    <div className={`absolute ${isMe ? "-top-12 right-0" : "-top-12 left-0"} flex gap-1 sm:gap-2 bg-gray-800 px-3 py-2 rounded-full shadow-xl border border-gray-700 z-50`}>
+                      {["👍", "❤️", "😂", "😮", "😢", "🙏"].map(emoji => (
+                        <button key={emoji} onClick={(e) => { e.stopPropagation(); handleReaction(msg, emoji); }} className="hover:scale-125 transition transform text-lg sm:text-xl">
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                    <div className={`absolute ${isMe ? "-left-28" : "-right-28"} top-1/2 -translate-y-1/2 flex gap-1 z-10`}>
+                      {!isMe && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); setActiveMsgId(null); }}
+                          className="bg-gray-700 hover:bg-gray-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                          title="Reply"
+                        >
+                          ↩️
+                        </button>
+                      )}
                       <button 
-                        onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); setActiveMsgId(null); }}
-                        className="bg-gray-700 hover:bg-gray-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
-                        title="Reply"
+                        onClick={(e) => { e.stopPropagation(); setShowInfoForMsg(msg); setActiveMsgId(null); }}
+                        className="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                        title="Message Info"
                       >
-                        ↩️
+                        ℹ️
                       </button>
-                    )}
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setShowInfoForMsg(msg); setActiveMsgId(null); }}
-                      className="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
-                      title="Message Info"
-                    >
-                      ℹ️
-                    </button>
-                    {isMe && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
-                        className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
-                        title="Delete Message"
-                      >
-                        🗑️
-                      </button>
-                    )}
-                  </div>
+                      {isMe && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                          className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                          title="Delete Message"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
 
                 {msg.message_type === "text" && (
                   <div>
-                    {msg.content.startsWith("::REPLY::") ? (
+                    {getBaseContent(msg.content).startsWith("::REPLY::") ? (
                       <>
                         <div className="bg-black/20 border-l-4 border-white/50 p-2 rounded mb-2 text-xs opacity-80 italic overflow-hidden whitespace-nowrap text-ellipsis">
-                          {msg.content.split("::ENDREPLY::")[0].replace("::REPLY::", "")}
+                          {getBaseContent(msg.content).split("::ENDREPLY::")[0].replace("::REPLY::", "")}
                         </div>
-                        <p>{msg.content.split("::ENDREPLY::")[1]}</p>
+                        <p>{getBaseContent(msg.content).split("::ENDREPLY::")[1]}</p>
                       </>
                     ) : (
-                      <p>{msg.content}</p>
+                      <p>{getBaseContent(msg.content)}</p>
                     )}
                   </div>
                 )}
-                {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
-                {msg.message_type === "audio" && <CustomAudioPlayer src={msg.content} isMe={isMe} />}
+                {msg.message_type === "image" && <img src={getBaseContent(msg.content)} alt="Media" className="rounded-lg max-w-full" />}
+                {msg.message_type === "audio" && <CustomAudioPlayer src={getBaseContent(msg.content)} isMe={isMe} />}
                 {msg.message_type === "image_once" && (
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-xl">💣</span>
@@ -848,6 +901,16 @@ export default function ChatApp() {
                         View Photo
                       </button>
                     )}
+                  </div>
+                )}
+
+                {getReactions(msg.content) && (
+                  <div className={`flex gap-1 absolute -bottom-3 ${isMe ? "right-2" : "left-2"} z-20`}>
+                    {Object.entries(getReactions(msg.content) as Record<string, number>).map(([emoji, count]) => (
+                      <span key={emoji} className="bg-gray-800 text-[10px] px-1.5 py-0.5 rounded-full border border-gray-700 shadow-md text-white flex items-center gap-1">
+                        {emoji} {count > 1 ? count : ''}
+                      </span>
+                    ))}
                   </div>
                 )}
                 
@@ -1062,8 +1125,16 @@ export default function ChatApp() {
 
               {/* Controls */}
               <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-6 bg-gray-900/80 p-4 rounded-full backdrop-blur-md border border-gray-800 z-10">
+                {isVideoCall && (
+                  <button onClick={toggleVideo} className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-lg transition ${isVideoOff ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                    {isVideoOff ? "🚫" : "📹"}
+                  </button>
+                )}
                 <button onClick={endCall} className="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-xl shadow-[0_0_15px_rgba(239,68,68,0.5)] hover:bg-red-600 transition hover:scale-105">
                   📞
+                </button>
+                <button onClick={toggleMute} className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-lg transition ${isMuted ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                  {isMuted ? "🔇" : "🎤"}
                 </button>
               </div>
             </div>
