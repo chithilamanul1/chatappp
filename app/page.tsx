@@ -116,6 +116,9 @@ export default function ChatApp() {
   const [myIp, setMyIp] = useState("");
   const [myLocation, setMyLocation] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [activeMsgId, setActiveMsgId] = useState<string | null>(null);
+  const [isViewOnce, setIsViewOnce] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -250,6 +253,9 @@ export default function ChatApp() {
               setMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
             }
           }
+          if (payload.eventType === "DELETE") {
+            setMessages((prev) => prev.filter(m => m.id !== payload.old.id));
+          }
         }
       )
       .subscribe();
@@ -353,6 +359,16 @@ export default function ChatApp() {
     setMessages([]);
   };
 
+  const handleDeleteMessage = async (id: string) => {
+    await supabase.from("messages").delete().eq("id", id);
+    setActiveMsgId(null);
+  };
+
+  const handleViewOnce = async (msg: any) => {
+    setFullscreenImage(msg.content);
+    await supabase.from("messages").delete().eq("id", msg.id);
+  };
+
   const sendTextMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -361,7 +377,7 @@ export default function ChatApp() {
     setNewMessage(""); // Clear input instantly
 
     const { data, error } = await supabase.from("messages").insert([
-      { sender: currentUser, message_type: "text", content: text },
+      { sender: currentUser, message_type: "text", content: text, read: false },
     ]).select();
 
     // Instantly show the message on your screen even if the realtime socket is slow
@@ -390,7 +406,7 @@ export default function ChatApp() {
       
       // Save reference in DB and instantly show
       const { data: insertData } = await supabase.from("messages").insert([
-        { sender: currentUser, message_type: type, content: data.publicUrl },
+        { sender: currentUser, message_type: type, content: data.publicUrl, read: false },
       ]).select();
 
       if (insertData && insertData.length > 0) {
@@ -406,7 +422,9 @@ export default function ChatApp() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "audio") => {
     const file = e.target.files?.[0];
     if (!file) return;
-    await uploadFile(file, type);
+    const finalType = (type === "image" && isViewOnce) ? "image_once" : type;
+    await uploadFile(file, finalType as any);
+    setIsViewOnce(false); // Reset after sending
   };
 
   // WhatsApp-style Voice Recording
@@ -505,10 +523,37 @@ export default function ChatApp() {
           const isMe = msg.sender === currentUser;
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-100"} break-words`}>
+              <div 
+                className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-blue-600 text-white cursor-pointer" : "bg-gray-800 text-gray-100"} break-words transition-all`}
+                onClick={() => { if (isMe) setActiveMsgId(activeMsgId === msg.id ? null : msg.id); }}
+              >
+                {isMe && activeMsgId === msg.id && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
+                    className="absolute -left-10 top-1/2 -translate-y-1/2 bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md z-10"
+                  >
+                    🗑️
+                  </button>
+                )}
+
                 {msg.message_type === "text" && <p>{msg.content}</p>}
                 {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
                 {msg.message_type === "audio" && <CustomAudioPlayer src={msg.content} isMe={isMe} />}
+                {msg.message_type === "image_once" && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-xl">💣</span>
+                    {isMe ? (
+                      <span className="italic opacity-80 font-medium">View-Once Sent</span>
+                    ) : (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleViewOnce(msg); }} 
+                        className="bg-blue-500 hover:bg-blue-400 text-white px-3 py-1.5 rounded-lg shadow-sm font-semibold"
+                      >
+                        View Photo
+                      </button>
+                    )}
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-1 mt-1 justify-end opacity-70 text-[10px]">
                   <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -547,6 +592,14 @@ export default function ChatApp() {
           </div>
         ) : (
           <form onSubmit={sendTextMessage} className="flex items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setIsViewOnce(!isViewOnce)}
+              className={`cursor-pointer text-lg p-1 sm:p-2 rounded-full flex-shrink-0 transition-colors ${isViewOnce ? "bg-red-500/20 text-red-400" : "hover:bg-gray-800 grayscale opacity-50"}`}
+              title="Toggle View Once"
+            >
+              💣
+            </button>
             <label className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0 transition-colors">
               📷
               <input type="file" accept="image/*" capture="environment" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
@@ -571,6 +624,22 @@ export default function ChatApp() {
           </form>
         )}
       </footer>
+
+      {/* Fullscreen View Once Overlay */}
+      {fullscreenImage && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+          <button 
+            onClick={() => setFullscreenImage(null)} 
+            className="absolute top-6 right-6 text-white text-xl bg-gray-800 hover:bg-gray-700 rounded-full w-12 h-12 flex items-center justify-center transition-colors shadow-lg border border-gray-700"
+          >
+            ✕
+          </button>
+          <img src={fullscreenImage} className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+          <p className="text-red-400 mt-6 text-sm animate-pulse font-medium tracking-wide">
+            This photo has been instantly deleted from the database.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
