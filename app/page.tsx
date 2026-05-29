@@ -182,9 +182,9 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-950 text-white max-w-md mx-auto border-x border-gray-800">
+    <div className="flex h-[100dvh] w-full flex-col bg-gray-950 text-white max-w-md mx-auto sm:border-x border-gray-800">
       {/* Header */}
-      <header className="flex items-center justify-between bg-gray-900 p-4 border-b border-gray-800">
+      <header className="flex items-center justify-between bg-gray-900 p-3 sm:p-4 border-b border-gray-800">
         <span className="font-medium text-pink-400">Us Only ❤️</span>
         <button onClick={handleLogout} className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-400 hover:text-white">
           Lock
@@ -192,12 +192,12 @@ export default function ChatApp() {
       </header>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
         {messages.map((msg) => {
           const isMe = msg.sender === currentUser;
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-pink-600 text-white" : "bg-gray-800 text-gray-100"}`}>
+              <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 ${isMe ? "bg-pink-600 text-white" : "bg-gray-800 text-gray-100"} break-words`}>
                 {msg.message_type === "text" && <p>{msg.content}</p>}
                 {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
                 {msg.message_type === "audio" && <audio src={msg.content} controls className="w-full max-w-[200px]" />}
@@ -209,13 +209,13 @@ export default function ChatApp() {
       </div>
 
       {/* Inputs */}
-      <footer className="bg-gray-900 p-4 border-t border-gray-800">
-        <form onSubmit={sendTextMessage} className="flex items-center gap-2">
-          <label className="cursor-pointer text-xl p-2 hover:bg-gray-800 rounded-full">
+      <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800">
+        <form onSubmit={sendTextMessage} className="flex items-center gap-1 sm:gap-2">
+          <label className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0">
             📷
             <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
           </label>
-          <label className="cursor-pointer text-xl p-2 hover:bg-gray-800 rounded-full">
+          <label className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0">
             🎙️
             <input type="file" accept="audio/*" capture="user" onChange={(e) => handleFileUpload(e, "audio")} className="hidden" />
           </label>
@@ -224,9 +224,9 @@ export default function ChatApp() {
             placeholder="Type a message..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            className="flex-1 rounded-xl bg-gray-800 px-4 py-2 text-white focus:outline-none"
+            className="flex-1 min-w-0 rounded-xl bg-gray-800 px-3 py-2 text-sm sm:text-base text-white focus:outline-none"
           />
-          <button type="submit" className="rounded-xl bg-pink-600 px-4 py-2 font-medium">Send</button>
+          <button type="submit" className="rounded-xl bg-pink-600 px-3 py-2 text-sm sm:text-base font-medium whitespace-nowrap flex-shrink-0">Send</button>
         </form>
       </footer>
     </div>
