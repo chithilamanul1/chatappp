@@ -67,7 +67,7 @@ export default function ChatApp() {
         
         let online = false;
         for (const id in newState) {
-          if (newState[id][0]?.user_id === partnerId) {
+          if ((newState[id][0] as any)?.user_id === partnerId) {
             online = true;
           }
         }
