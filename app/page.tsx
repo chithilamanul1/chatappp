@@ -16,7 +16,10 @@ export default function ChatApp() {
   const [newMessage, setNewMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [isPartnerOnline, setIsPartnerOnline] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Check for saved session on load
   useEffect(() => {
@@ -169,12 +172,9 @@ export default function ChatApp() {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "audio") => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadFile = async (file: File, type: "image" | "audio") => {
     setUploading(true);
-    const fileExt = file.name.split(".").pop();
+    const fileExt = file.name.split(".").pop() || "webm";
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `${fileName}`;
 
@@ -186,12 +186,62 @@ export default function ChatApp() {
     if (!uploadError) {
       const { data } = supabase.storage.from("chat-media").getPublicUrl(filePath);
       
-      // Save reference in DB
-      await supabase.from("messages").insert([
+      // Save reference in DB and instantly show
+      const { data: insertData } = await supabase.from("messages").insert([
         { sender: currentUser, message_type: type, content: data.publicUrl },
-      ]);
+      ]).select();
+
+      if (insertData && insertData.length > 0) {
+        setMessages((prev) => {
+          if (prev.find(m => m.id === insertData[0].id)) return prev;
+          return [...prev, insertData[0]];
+        });
+      }
     }
     setUploading(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "audio") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFile(file, type);
+  };
+
+  // WhatsApp-style Voice Recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const file = new File([audioBlob], `audio_${Date.now()}.webm`, { type: "audio/webm" });
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+        
+        await uploadFile(file, "audio");
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Microphone access denied", err);
+      alert("Microphone access is required to send voice messages. Please allow microphone permissions in your browser settings.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   if (!isLoggedIn) {
@@ -264,24 +314,45 @@ export default function ChatApp() {
 
       {/* Inputs */}
       <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800">
-        <form onSubmit={sendTextMessage} className="flex items-center gap-1 sm:gap-2">
-          <label className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0">
-            📷
-            <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
-          </label>
-          <label className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0">
-            🎙️
-            <input type="file" accept="audio/*" capture="user" onChange={(e) => handleFileUpload(e, "audio")} className="hidden" />
-          </label>
-          <input
-            type="text"
-            placeholder="Type a message..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            className="flex-1 min-w-0 rounded-xl bg-gray-800 px-3 py-2 text-sm sm:text-base text-white focus:outline-none"
-          />
-          <button type="submit" className="rounded-xl bg-pink-600 px-3 py-2 text-sm sm:text-base font-medium whitespace-nowrap flex-shrink-0">Send</button>
-        </form>
+        {isRecording ? (
+          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-pink-600/20 border border-pink-500/30">
+            <span className="text-pink-500 font-medium flex items-center gap-3 px-2">
+              <span className="w-3 h-3 rounded-full bg-pink-500 animate-pulse"></span>
+              Recording Voice...
+            </span>
+            <button 
+              type="button" 
+              onClick={stopRecording} 
+              className="rounded-xl bg-pink-600 px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap text-white"
+            >
+              Send
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={sendTextMessage} className="flex items-center gap-1 sm:gap-2">
+            <label className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0 transition-colors">
+              📷
+              <input type="file" accept="image/*" capture="environment" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
+            </label>
+            <button 
+              type="button" 
+              onClick={startRecording}
+              className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0 transition-colors"
+            >
+              🎙️
+            </button>
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className="flex-1 min-w-0 rounded-xl bg-gray-800 px-3 py-2 text-sm sm:text-base text-white focus:outline-none"
+            />
+            <button type="submit" disabled={uploading} className="rounded-xl bg-pink-600 px-3 py-2 text-sm sm:text-base font-medium whitespace-nowrap flex-shrink-0 transition hover:bg-pink-500 disabled:opacity-50">
+              {uploading ? "..." : "Send"}
+            </button>
+          </form>
+        )}
       </footer>
     </div>
   );
