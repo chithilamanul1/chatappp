@@ -17,22 +17,38 @@ export default function ChatApp() {
   const [uploading, setUploading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Check for saved session on load
+  useEffect(() => {
+    const savedUser = localStorage.getItem("chat_user");
+    if (savedUser === "user2") {
+      setCurrentUser("user2");
+      setIsLoggedIn(true);
+    }
+  }, []);
+
   // CRITICAL SECURITY: Log out if she goes to the home screen or minimizes the app
+  // This now ONLY applies to her ('i'), allowing you ('user2') to stay logged in
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
+      if (document.visibilityState === "hidden" && currentUser === "i") {
+        handleLogout();
+      }
+    };
+
+    const handlePageHide = () => {
+      if (currentUser === "i") {
         handleLogout();
       }
     };
 
     window.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", handleLogout);
+    window.addEventListener("pagehide", handlePageHide);
 
     return () => {
       window.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", handleLogout);
+      window.removeEventListener("pagehide", handlePageHide);
     };
-  }, []);
+  }, [currentUser]);
 
   // Fetch and Listen for Live Messages
   useEffect(() => {
@@ -81,6 +97,7 @@ export default function ChatApp() {
       // Replace user2/pass2 with your own login details
       setCurrentUser("user2");
       setIsLoggedIn(true);
+      localStorage.setItem("chat_user", "user2"); // Save session for you
     } else {
       alert("Wrong credentials");
     }
@@ -92,6 +109,7 @@ export default function ChatApp() {
       await supabase.from("messages").delete().neq("sender", "none");
     }
 
+    localStorage.removeItem("chat_user"); // Clear your saved session if you manually lock
     setIsLoggedIn(false);
     setCurrentUser("");
     setUsername("");
