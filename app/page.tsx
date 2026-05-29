@@ -106,7 +106,13 @@ export default function ChatApp() {
         { event: "*", schema: "public", table: "messages" },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setMessages((prev) => [...prev, payload.new]);
+            setMessages((prev) => {
+              if (prev.find(m => m.id === payload.new.id)) return prev;
+              return [...prev, payload.new];
+            });
+          }
+          if (payload.eventType === "UPDATE") {
+            setMessages((prev) => prev.map(m => m.id === payload.new.id ? payload.new : m));
           }
         }
       )
@@ -120,6 +126,28 @@ export default function ChatApp() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Mark incoming messages as read
+  useEffect(() => {
+    if (!isLoggedIn || messages.length === 0) return;
+
+    const unreadMessages = messages.filter((m) => m.sender !== currentUser && !m.read);
+
+    if (unreadMessages.length > 0) {
+      const markAsRead = async () => {
+        const unreadIds = unreadMessages.map(m => m.id);
+        
+        // Optimistically update local state so we don't spam the database
+        setMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, read: true } : m));
+
+        await supabase
+          .from("messages")
+          .update({ read: true })
+          .in('id', unreadIds);
+      };
+      markAsRead();
+    }
+  }, [messages, isLoggedIn, currentUser]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,9 +330,19 @@ export default function ChatApp() {
                 {msg.message_type === "text" && <p>{msg.content}</p>}
                 {msg.message_type === "image" && <img src={msg.content} alt="Media" className="rounded-lg max-w-full" />}
                 {msg.message_type === "audio" && <audio src={msg.content} controls className="w-full max-w-[200px]" />}
-                <span className={`block text-[10px] mt-1 opacity-70 ${isMe ? "text-right" : "text-left"}`}>
-                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                
+                <div className="flex items-center gap-1 mt-1 justify-end opacity-70 text-[10px]">
+                  <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {isMe && (
+                    <span className="ml-1 tracking-tighter font-bold text-xs">
+                      {msg.read ? (
+                        <span className="text-cyan-300">✓✓</span>
+                      ) : (
+                        <span className="text-gray-300">✓✓</span>
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );
