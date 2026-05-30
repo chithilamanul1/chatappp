@@ -872,10 +872,11 @@ export default function ChatApp() {
   if (!isLoggedIn) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950 p-4">
-        <form onSubmit={handleLogin} className="w-full max-w-sm rounded-2xl bg-gray-900 p-6 shadow-xl border border-gray-800">
+        <form onSubmit={handleLogin} autoComplete="off" className="w-full max-w-sm rounded-2xl bg-gray-900 p-6 shadow-xl border border-gray-800">
           <h2 className="mb-6 text-center text-xl font-semibold text-white tracking-wide">Library Member Access</h2>
           <input
             type="text"
+            autoComplete="off"
             placeholder="Library Card Number"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -884,6 +885,7 @@ export default function ChatApp() {
           />
           <input
             type="password"
+            autoComplete="new-password"
             placeholder="PIN Code"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -1339,11 +1341,12 @@ export default function ChatApp() {
               } else {
                 alert("Incorrect password");
               }
-            }} className="space-y-4">
+            }} autoComplete="off" className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
                 <input 
                   type="password" 
+                  autoComplete="new-password"
                   value={unlockPassword}
                   onChange={(e) => setUnlockPassword(e.target.value)}
                   className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
