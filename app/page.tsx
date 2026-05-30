@@ -426,6 +426,12 @@ export default function ChatApp() {
   useEffect(() => {
     if (isLoggedIn && ("Notification" in window)) {
       try {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+          Notification.requestPermission().catch(console.error);
+        }
+      } catch (e) {
+        console.error("Notification request failed:", e);
+      }
     }
   }, [isLoggedIn, currentUser]);
 
