@@ -420,8 +420,6 @@ export default function ChatApp() {
     }
   }, [messages, isLoggedIn, currentUser]);
 
-  const previousOnlineRef = useRef(isPartnerOnline);
-
   // Request Notification Permission on Login
   useEffect(() => {
     if (isLoggedIn && ("Notification" in window)) {
