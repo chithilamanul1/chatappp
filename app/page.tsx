@@ -100,6 +100,13 @@ const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
   );
 };
 
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio("https://actions.google.com/sounds/v1/communications/incoming_message.ogg");
+    audio.play().catch(e => console.log("Audio blocked:", e));
+  } catch(e) {}
+};
+
 export default function ChatApp() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -153,6 +160,8 @@ export default function ChatApp() {
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const dbChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const previousOnlineRef = useRef(false);
+  const isInitialLoadRef = useRef(true);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -160,11 +169,11 @@ export default function ChatApp() {
 
   // Fetch my IP and Location
   useEffect(() => {
-    fetch("https://ipapi.co/json/")
+    fetch("https://ipwho.is/")
       .then(res => res.json())
       .then(data => {
         if (data.ip) setMyIp(data.ip);
-        if (data.city) setMyLocation(`${data.city}, ${data.country_name}`);
+        if (data.city) setMyLocation(`${data.city}, ${data.country}`);
       })
       .catch(console.error);
   }, []);
@@ -231,9 +240,22 @@ export default function ChatApp() {
             pLoc = stateData.location || "";
           }
         }
+        
         setIsPartnerOnline(online);
         setPartnerIp(pIp);
         setPartnerLocation(pLoc);
+
+        if (!isInitialLoadRef.current) {
+          if (online && !previousOnlineRef.current && currentUser === "user2") {
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("She is Online!", { body: `IP: ${pIp} - ${pLoc}` });
+            }
+            playNotificationSound();
+          }
+        } else {
+          isInitialLoadRef.current = false;
+        }
+        previousOnlineRef.current = online;
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -280,6 +302,16 @@ export default function ChatApp() {
                 if (prev.find(m => m.id === payload.new.id)) return prev;
                 return [...prev, payload.new];
               });
+
+              if (sender !== currentUser && currentUser === "user2") {
+                if ("Notification" in window && Notification.permission === "granted") {
+                  const msgText = payload.new.message_type === 'text' 
+                    ? payload.new.content.split("::REACTIONS::")[0].replace("::REPLY::", "").split("::ENDREPLY::").pop() 
+                    : `Sent a ${payload.new.message_type}`;
+                  new Notification("New Message from Her", { body: msgText });
+                }
+                playNotificationSound();
+              }
             }
           }
           if (payload.eventType === "UPDATE") {
