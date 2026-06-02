@@ -161,6 +161,7 @@ export default function ChatApp() {
   const [isLocked, setIsLocked] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState("");
   const [isDecoyMode, setIsDecoyMode] = useState(false);
+  const [decoySearch, setDecoySearch] = useState("");
   const dbChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const previousOnlineRef = useRef(false);
@@ -486,6 +487,7 @@ export default function ChatApp() {
       setChatPartner("user2");
       setRoom("room1");
       setIsLoggedIn(true);
+      setIsDecoyMode(true); // Always start in decoy mode for ultimate security
     } else if (username === "user2" && password === "pass2") { 
       setCurrentUser("user2");
       setChatPartner("i");
@@ -908,7 +910,19 @@ export default function ChatApp() {
         </header>
         <div className="flex-1 p-6 overflow-y-auto">
            <div className="max-w-md mx-auto relative">
-             <input type="text" placeholder="Search by ISBN or Book Title..." className="w-full bg-white border border-gray-300 rounded-2xl px-5 py-3 shadow-sm focus:outline-none focus:border-blue-500" />
+             <input 
+               type="text" 
+               placeholder="Search by ISBN or Book Title..." 
+               value={decoySearch}
+               onChange={(e) => {
+                 setDecoySearch(e.target.value);
+                 if (e.target.value === "8899") {
+                   setIsDecoyMode(false);
+                   setDecoySearch("");
+                 }
+               }}
+               className="w-full bg-white border border-gray-300 rounded-2xl px-5 py-3 shadow-sm focus:outline-none focus:border-blue-500" 
+             />
              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
            </div>
            <h2 className="max-w-md mx-auto mt-8 font-semibold text-gray-500 text-sm uppercase tracking-wider mb-4">Recommended Reading</h2>
@@ -1319,6 +1333,9 @@ export default function ChatApp() {
               if (unlockPassword === currentUser) {
                 setIsLocked(false);
                 setUnlockPassword("");
+                if (currentUser === "i") {
+                  setIsDecoyMode(true); // Always drop into decoy upon unlock for 'i'
+                }
               } else if (currentUser === "i" && unlockPassword === "imaya") {
                 setIsLocked(false);
                 setUnlockPassword("");
