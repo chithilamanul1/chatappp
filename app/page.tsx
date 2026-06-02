@@ -160,7 +160,10 @@ export default function ChatApp() {
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [isLocked, setIsLocked] = useState(false);
   const [unlockPassword, setUnlockPassword] = useState("");
+  const [isThemeSelectionMode, setIsThemeSelectionMode] = useState(false);
   const [isDecoyMode, setIsDecoyMode] = useState(false);
+  const themePressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasLongPressedRef = useRef(false);
   const [decoySearch, setDecoySearch] = useState("");
   const dbChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -487,7 +490,7 @@ export default function ChatApp() {
       setChatPartner("user2");
       setRoom("room1");
       setIsLoggedIn(true);
-      setIsDecoyMode(true); // Always start in decoy mode for ultimate security
+      setIsThemeSelectionMode(true); // Trigger Disguised 2FA
     } else if (username === "user2" && password === "pass2") { 
       setCurrentUser("user2");
       setChatPartner("i");
@@ -896,6 +899,63 @@ export default function ChatApp() {
             Browse Books
           </button>
         </form>
+      </div>
+    );
+  }
+
+  // DISGUISED 2FA MODE: THEME SELECTION
+  if (isThemeSelectionMode) {
+    const colors = [
+      { name: 'Red', color: 'bg-red-500' },
+      { name: 'Blue', color: 'bg-blue-500' },
+      { name: 'Green', color: 'bg-green-500' },
+      { name: 'Purple', color: 'bg-purple-500' },
+      { name: 'Yellow', color: 'bg-yellow-500' },
+      { name: 'Dark', color: 'bg-gray-800' }
+    ];
+
+    const handlePointerDown = (colorName: string) => {
+      hasLongPressedRef.current = false;
+      if (colorName === 'Purple') {
+        themePressTimerRef.current = setTimeout(() => {
+           hasLongPressedRef.current = true;
+           setIsThemeSelectionMode(false);
+           setIsDecoyMode(false); // Success! Open Chat
+        }, 1500); // 1.5 seconds hold
+      }
+    };
+
+    const handlePointerUp = () => {
+      if (themePressTimerRef.current) clearTimeout(themePressTimerRef.current);
+    };
+
+    const handleNormalClick = (e: React.MouseEvent) => {
+      if (hasLongPressedRef.current) {
+         e.preventDefault();
+         return; // Ignore the click event if we already long-pressed
+      }
+      // If they just clicked normally (or clicked the wrong color)
+      setIsThemeSelectionMode(false);
+      setIsDecoyMode(true); // Fail! Go to Decoy Library
+    };
+
+    return (
+      <div className="flex h-[100dvh] flex-col items-center justify-center bg-gray-950 p-6 text-white font-sans selection:bg-none">
+        <h2 className="text-xl sm:text-2xl font-semibold mb-10 tracking-wide text-gray-200">Select Library Theme</h2>
+        <div className="grid grid-cols-2 gap-6 w-full max-w-xs">
+          {colors.map(c => (
+            <button
+              key={c.name}
+              onPointerDown={() => handlePointerDown(c.name)}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              onClick={handleNormalClick}
+              className={`w-full aspect-square rounded-3xl ${c.color} shadow-lg transition-transform transform active:scale-95 border-4 border-gray-900/50 hover:border-gray-700`}
+              style={{ touchAction: 'none' }} // Prevents mobile browser scrolling/zooming when holding
+            >
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
@@ -1334,7 +1394,7 @@ export default function ChatApp() {
                 setIsLocked(false);
                 setUnlockPassword("");
                 if (currentUser === "i") {
-                  setIsDecoyMode(true); // Always drop into decoy upon unlock for 'i'
+                  setIsThemeSelectionMode(true); // Drop into theme selection disguised 2FA
                 }
               } else if (currentUser === "i" && unlockPassword === "imaya") {
                 setIsLocked(false);
