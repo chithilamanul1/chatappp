@@ -67,10 +67,10 @@ const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
   };
 
   return (
-    <div className={`flex items-center gap-3 p-2 rounded-2xl ${isMe ? "bg-blue-700/50" : "bg-gray-700/50"} w-[220px] sm:w-[260px] my-1`}>
+    <div className={`flex items-center gap-3 p-2 rounded-2xl ${isMe ? "bg-purple-600/30" : "bg-gray-800/80"} w-[240px] sm:w-[280px] my-1 shadow-inner border border-gray-700/30`}>
       <button 
         onClick={togglePlay} 
-        className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 text-white shadow-md hover:bg-blue-400 transition"
+        className={`w-10 h-10 rounded-full ${isMe ? "bg-purple-500 hover:bg-purple-400" : "bg-gray-600 hover:bg-gray-500"} flex items-center justify-center flex-shrink-0 text-white shadow-md transition`}
       >
         {isPlaying ? (
           <span className="w-3 h-3 bg-white rounded-sm"></span>
@@ -81,15 +81,18 @@ const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
       
       <div className="flex-1 flex flex-col justify-center">
         <div 
-          className="w-full h-1.5 bg-gray-400/30 rounded-full overflow-hidden mb-1.5 relative cursor-pointer"
+          className="w-full h-6 flex items-center gap-[2px] mb-1 cursor-pointer relative"
           onClick={handleSeek}
         >
-          <div 
-            className="absolute top-0 left-0 h-full bg-white rounded-full transition-all duration-100 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div 
+              key={i} 
+              className={`flex-1 rounded-full transition-all ${i / 30 * 100 <= progress ? "bg-purple-400" : "bg-gray-500/50"}`} 
+              style={{ height: `${20 + Math.random() * 80}%` }}
+            ></div>
+          ))}
         </div>
-        <div className="flex justify-between text-[10px] text-gray-200 font-medium">
+        <div className="flex justify-between text-[10px] text-gray-400 font-medium px-1">
           <span>{formatTime(currentTime)}</span>
           <span>{duration > 0 && duration !== Infinity ? formatTime(duration) : "Voice"}</span>
         </div>
@@ -128,6 +131,15 @@ export default function ChatApp() {
   const [isViewOnce, setIsViewOnce] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [showStickers, setShowStickers] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const emojis = {
+    "Smileys & People": ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","☺","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🫡","🤐","🫥","😐","😑","😶","🫠","😏","😒","🙄","😬","🤥","🫨","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","☹","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿"],
+    "Gestures": ["👋","🤚","🖐","✋","🖖","🫱","🫲","🫳","🫴","👌","🤌","🤏","✌","🤞","🫰","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝","🫵","👍","👎","✊","👊","🤛","🤜","👏","🫶","🙌","👐","🤲","🤝","🙏"],
+    "Hearts & Symbols": ["❤","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❤️‍🔥","💕","💞","💓","💗","💖","💘","💝","💟","☮","✝","☪","🕉","☸","✡","🔯","🕎","☯","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","⛎","🔀","🔁","🔂","⏩","⏪","⏫","⏬"],
+    "Animals & Nature": ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪰","🪲","🪳","🦟","🦗","🕷","🦂","🐢","🐍","🦎","🦖","🦕"],
+    "Food": ["🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶","🫑","🌽","🥕","🫒","🧄","🧅","🥔","🍠","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓","🥩","🍗","🍖","🦴","🌭","🍔","🍟","🍕"]
+  };
   
   const stickers = [
     "https://fonts.gstatic.com/s/e/notoemoji/latest/1f97a/512.gif",
@@ -329,12 +341,6 @@ export default function ChatApp() {
                 }
                 playNotificationSound();
               }
-              if (sender !== currentUser && currentUser === "i") {
-                if ("Notification" in window && Notification.permission === "granted") {
-                  new Notification("1 new message from e-books");
-                }
-                playNotificationSound();
-              }
             }
           }
           if (payload.eventType === "UPDATE") {
@@ -426,7 +432,7 @@ export default function ChatApp() {
 
   // Request Notification Permission on Login
   useEffect(() => {
-    if (isLoggedIn && ("Notification" in window)) {
+    if (isLoggedIn && ("Notification" in window) && (currentUser === "user2" || currentUser === "alex")) {
       try {
         if (Notification.permission !== "granted" && Notification.permission !== "denied") {
           Notification.requestPermission().catch(console.error);
@@ -874,29 +880,30 @@ export default function ChatApp() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-950 p-4">
-        <form onSubmit={handleLogin} autoComplete="off" className="w-full max-w-sm rounded-2xl bg-gray-900 p-6 shadow-xl border border-gray-800">
-          <h2 className="mb-6 text-center text-xl font-semibold text-white tracking-wide">Library Member Access</h2>
+      <div className="flex h-[100dvh] items-center justify-center bg-[#0d0d0f] p-4 text-gray-100">
+        <form onSubmit={handleLogin} autoComplete="off" className="w-full max-w-sm rounded-3xl bg-[#151518] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-gray-800/50 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-indigo-500"></div>
+          <h2 className="mb-8 text-center text-2xl font-semibold text-white tracking-wide">Secure Access</h2>
           <input
             type="text"
             autoComplete="off"
-            placeholder="Library Card Number"
+            placeholder="Library ID"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="mb-3 w-full rounded-xl bg-gray-800 p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mb-4 w-full rounded-2xl bg-[#0d0d0f] p-4 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 border border-gray-800 shadow-inner transition"
             required
           />
           <input
             type="password"
             autoComplete="new-password"
-            placeholder="PIN Code"
+            placeholder="Passcode"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mb-6 w-full rounded-xl bg-gray-800 p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="mb-8 w-full rounded-2xl bg-[#0d0d0f] p-4 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 border border-gray-800 shadow-inner transition"
             required
           />
-          <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 p-3 font-semibold text-white transition hover:opacity-90">
-            Browse Books
+          <button type="submit" className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 p-4 font-semibold text-white transition hover:opacity-90 shadow-[0_4px_20px_rgba(147,51,234,0.3)] transform active:scale-95">
+            Connect
           </button>
         </form>
       </div>
@@ -906,12 +913,12 @@ export default function ChatApp() {
   // DISGUISED 2FA MODE: THEME SELECTION
   if (isThemeSelectionMode) {
     const colors = [
-      { name: 'Red', color: 'bg-red-500' },
-      { name: 'Blue', color: 'bg-blue-500' },
-      { name: 'Green', color: 'bg-green-500' },
-      { name: 'Purple', color: 'bg-purple-500' },
-      { name: 'Yellow', color: 'bg-yellow-500' },
-      { name: 'Dark', color: 'bg-gray-800' }
+      { name: 'Red', color: 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]' },
+      { name: 'Blue', color: 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' },
+      { name: 'Green', color: 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' },
+      { name: 'Purple', color: 'bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.3)]' },
+      { name: 'Yellow', color: 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]' },
+      { name: 'Dark', color: 'bg-gray-800 shadow-lg' }
     ];
 
     const handlePointerDown = (colorName: string) => {
@@ -934,15 +941,14 @@ export default function ChatApp() {
          e.preventDefault();
          return; // Ignore the click event if we already long-pressed
       }
-      // If they just clicked normally (or clicked the wrong color)
       setIsThemeSelectionMode(false);
       setIsDecoyMode(true); // Fail! Go to Decoy Library
     };
 
     return (
-      <div className="flex h-[100dvh] flex-col items-center justify-center bg-gray-950 p-6 text-white font-sans selection:bg-none">
-        <h2 className="text-xl sm:text-2xl font-semibold mb-10 tracking-wide text-gray-200">Select Library Theme</h2>
-        <div className="grid grid-cols-2 gap-6 w-full max-w-xs">
+      <div className="flex h-[100dvh] flex-col items-center justify-center bg-[#0d0d0f] p-6 text-white font-sans selection:bg-none">
+        <h2 className="text-xl sm:text-2xl font-semibold mb-12 tracking-wide text-gray-200">Select Library Theme</h2>
+        <div className="grid grid-cols-2 gap-8 w-full max-w-xs">
           {colors.map(c => (
             <button
               key={c.name}
@@ -950,7 +956,7 @@ export default function ChatApp() {
               onPointerUp={handlePointerUp}
               onPointerLeave={handlePointerUp}
               onClick={handleNormalClick}
-              className={`w-full aspect-square rounded-3xl ${c.color} shadow-lg transition-transform transform active:scale-95 border-4 border-gray-900/50 hover:border-gray-700`}
+              className={`w-full aspect-square rounded-3xl ${c.color} transition-transform transform active:scale-95 border-2 border-gray-800/50 hover:border-gray-600`}
               style={{ touchAction: 'none' }} // Prevents mobile browser scrolling/zooming when holding
             >
             </button>
@@ -1001,57 +1007,51 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex h-[100dvh] w-full flex-col bg-gray-950 text-white max-w-md mx-auto sm:border-x border-gray-800">
+    <div className="flex h-[100dvh] w-full flex-col bg-[#0d0d0f] text-gray-100 max-w-md mx-auto sm:border-x border-gray-800 shadow-2xl relative overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between bg-gray-900 p-3 sm:p-4 border-b border-gray-800">
-        <div className="flex flex-col">
-          <span className="font-medium text-blue-400">PDF E-Book Library</span>
-          <div className="text-xs text-gray-400 flex flex-col mt-0.5">
-            {isPartnerOnline ? (
-              <>
-                <span className="text-green-400 font-medium">● Online</span>
-                {isPartnerTyping ? (
-                  <span className="text-blue-400 font-medium animate-pulse mt-0.5">typing...</span>
-                ) : (
-                  (partnerIp || partnerLocation) && (
-                    <span className="text-[9px] opacity-70 mt-0.5">{partnerIp} • {partnerLocation}</span>
-                  )
-                )}
-              </>
-            ) : (
-              <span>○ Offline</span>
-            )}
+      <header className="flex items-center justify-between bg-[#151518] p-3 sm:p-4 border-b border-gray-800/50 shadow-md z-10">
+        <div className="flex items-center gap-3">
+          <button className="text-purple-400 hover:text-purple-300 transition text-xl">←</button>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 p-[2px]">
+            <div className="w-full h-full bg-[#151518] rounded-full flex items-center justify-center border-2 border-[#151518] overflow-hidden">
+              <span className="text-purple-400 font-semibold text-sm">KG</span>
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-100 tracking-wide text-base">{currentUser === 'user2' ? 'Ima' : 'Kathy Gomez'}</span>
+            <div className="text-[11px] flex flex-col mt-0.5">
+              {isPartnerOnline ? (
+                <>
+                  {isPartnerTyping ? (
+                    <span className="text-purple-400 font-medium animate-pulse mt-0.5">Typing...</span>
+                  ) : (
+                    <span className="text-purple-500 font-medium">Online</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-gray-500">Offline</span>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {isPartnerOnline && (
-            <div className="flex gap-1.5 sm:gap-2">
-              <button onClick={() => initiateCall(false)} className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Voice Call">📞</button>
-              <button onClick={() => initiateCall(true)} className="text-gray-400 hover:text-white p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Video Call">📹</button>
-            </div>
+            <button onClick={() => initiateCall(false)} className="w-10 h-10 rounded-full bg-[#1c1c1e] shadow-[inset_-2px_-2px_5px_rgba(255,255,255,0.02),inset_2px_2px_5px_rgba(0,0,0,0.5),_2px_2px_5px_rgba(0,0,0,0.3)] flex items-center justify-center text-purple-500 hover:text-purple-400 transition transform hover:scale-105 active:scale-95" title="Voice Call">
+              📞
+            </button>
           )}
-          <button onClick={handleLogout} className="rounded-lg bg-gray-800 px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700 transition">
-            Sign Out
-          </button>
+          <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-red-400 transition px-2">Exit</button>
         </div>
       </header>
 
       {/* Chat Area */}
-      <div 
-        className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4"
-        style={currentUser === "user2" ? {
-          backgroundImage: "linear-gradient(rgba(3, 7, 18, 0.75), rgba(3, 7, 18, 0.75)), url('/bg.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed"
-        } : {}}
-      >
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 bg-[#0d0d0f]">
         {messages.map((msg) => {
           const isMe = msg.sender === currentUser;
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
               <div 
-                className={`relative max-w-[85%] sm:max-w-[75%] p-3 ${msg.message_type === 'sticker' ? 'bg-transparent' : (isMe ? "bg-blue-600 text-white rounded-2xl" : "bg-gray-800 text-gray-100 rounded-2xl")} cursor-pointer break-words transition-all mb-2`}
+                className={`relative max-w-[85%] sm:max-w-[75%] px-4 py-2.5 ${msg.message_type === 'sticker' ? 'bg-transparent' : (isMe ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-2xl rounded-tr-sm shadow-[0_4px_15px_rgba(147,51,234,0.2)]" : "bg-[#1e1e22] text-gray-200 rounded-2xl rounded-tl-sm shadow-[inset_-1px_-1px_2px_rgba(255,255,255,0.02),_2px_4px_10px_rgba(0,0,0,0.3)] border border-gray-800/50")} cursor-pointer break-words transition-all mb-2`}
                 onClick={() => setActiveMsgId(activeMsgId === msg.id ? null : msg.id)}
               >
                 {activeMsgId === msg.id && (
@@ -1075,7 +1075,7 @@ export default function ChatApp() {
                       )}
                       <button 
                         onClick={(e) => { e.stopPropagation(); setShowInfoForMsg(msg); setActiveMsgId(null); }}
-                        className="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
+                        className="bg-purple-500 hover:bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
                         title="Message Info"
                       >
                         ℹ️
@@ -1103,7 +1103,7 @@ export default function ChatApp() {
                         <p>{getBaseContent(msg.content).split("::ENDREPLY::")[1]}</p>
                       </>
                     ) : (
-                      <p>{getBaseContent(msg.content)}</p>
+                      <p className="text-[15px] leading-relaxed">{getBaseContent(msg.content)}</p>
                     )}
                   </div>
                 )}
@@ -1118,7 +1118,7 @@ export default function ChatApp() {
                     ) : (
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleViewOnce(msg); }} 
-                        className="bg-blue-500 hover:bg-blue-400 text-white px-3 py-1.5 rounded-lg shadow-sm font-semibold"
+                        className="bg-purple-500 hover:bg-purple-400 text-white px-3 py-1.5 rounded-lg shadow-sm font-semibold"
                       >
                         View Photo
                       </button>
@@ -1129,21 +1129,21 @@ export default function ChatApp() {
                 {getReactions(msg.content) && (
                   <div className={`flex gap-1 absolute -bottom-3 ${isMe ? "right-2" : "left-2"} z-20`}>
                     {Object.entries(getReactions(msg.content) as Record<string, number>).map(([emoji, count]) => (
-                      <span key={emoji} className="bg-gray-800 text-[10px] px-1.5 py-0.5 rounded-full border border-gray-700 shadow-md text-white flex items-center gap-1">
+                      <span key={emoji} className="bg-[#1e1e22] text-[10px] px-1.5 py-0.5 rounded-full border border-gray-800 shadow-md text-white flex items-center gap-1">
                         {emoji} {count > 1 ? count : ''}
                       </span>
                     ))}
                   </div>
                 )}
                 
-                <div className="flex items-center gap-1 mt-1 justify-end opacity-70 text-[10px]">
+                <div className={`flex items-center gap-1 mt-1 justify-end opacity-70 text-[10px] ${isMe ? "text-purple-100" : "text-gray-400"}`}>
                   <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   {isMe && (
-                    <span className="ml-1 tracking-tighter font-bold text-xs">
+                    <span className="ml-1 tracking-tighter font-bold text-[11px]">
                       {msg.read ? (
-                        <span className="text-cyan-300">✓✓</span>
+                        <span className="text-cyan-300 drop-shadow-[0_0_2px_rgba(103,232,249,0.8)]">✓✓</span>
                       ) : (
-                        <span className="text-gray-300">✓✓</span>
+                        <span className="text-purple-200">✓✓</span>
                       )}
                     </span>
                   )}
@@ -1156,11 +1156,31 @@ export default function ChatApp() {
       </div>
 
       {/* Inputs */}
-      <footer className="bg-gray-900 p-2 sm:p-4 border-t border-gray-800 flex flex-col relative">
+      <footer className="p-3 bg-[#151518] border-t border-gray-800/50 flex flex-col relative z-20">
+        {showEmojiPicker && (
+          <div className="absolute bottom-[100%] mb-2 left-2 right-2 bg-[#1e1e22] border border-gray-800 shadow-2xl rounded-2xl h-64 flex flex-col overflow-hidden animate-fade-in-up">
+            <div className="p-2 border-b border-gray-800 bg-[#1a1a1c]">
+              <input type="text" placeholder="Search emoji" className="w-full bg-[#111113] text-sm text-gray-200 rounded-full px-4 py-2 focus:outline-none focus:ring-1 focus:ring-purple-500" />
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 grid grid-cols-8 gap-2 content-start">
+              {Object.entries(emojis).map(([category, items]) => (
+                <React.Fragment key={category}>
+                  <div className="col-span-8 text-xs font-semibold text-gray-500 mt-2 mb-1 uppercase tracking-wider">{category}</div>
+                  {items.map(emoji => (
+                    <button key={emoji} type="button" onClick={() => setNewMessage(prev => prev + emoji)} className="text-xl sm:text-2xl hover:scale-125 transition transform focus:outline-none flex items-center justify-center">
+                      {emoji}
+                    </button>
+                  ))}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+
         {showStickers && (
-          <div className="absolute bottom-full left-0 right-0 bg-gray-800 border-t border-gray-700 p-3 grid grid-cols-4 sm:grid-cols-5 gap-3 max-h-56 overflow-y-auto rounded-t-2xl shadow-2xl z-50 animate-fade-in-up">
+          <div className="absolute bottom-[100%] mb-2 left-2 right-2 bg-[#1e1e22] border border-gray-800 shadow-2xl rounded-2xl p-3 grid grid-cols-4 sm:grid-cols-5 gap-3 max-h-56 overflow-y-auto animate-fade-in-up">
             {stickers.map((url, i) => (
-              <button key={i} type="button" onClick={() => sendSticker(url)} className="p-2 hover:bg-gray-700 rounded-xl transition transform hover:scale-110 flex items-center justify-center">
+              <button key={i} type="button" onClick={() => sendSticker(url)} className="p-2 hover:bg-gray-800 rounded-xl transition transform hover:scale-110 flex items-center justify-center border border-transparent hover:border-gray-700">
                 <img src={url} alt="Sticker" className="w-16 h-16 object-contain drop-shadow-md" />
               </button>
             ))}
@@ -1168,70 +1188,59 @@ export default function ChatApp() {
         )}
 
         {replyingTo && (
-          <div className="bg-gray-800 border-l-4 border-blue-500 p-2 mb-2 rounded flex justify-between items-center text-sm text-gray-300">
+          <div className="bg-[#1e1e22] border-l-4 border-purple-500 p-2 mb-2 rounded flex justify-between items-center text-sm text-gray-300 shadow-md">
             <div className="truncate pr-4">
-              <span className="font-semibold text-blue-400 mr-2">Replying to:</span>
+              <span className="font-semibold text-purple-400 mr-2">Replying to:</span>
               {replyingTo.message_type === "text" 
                 ? (replyingTo.content.includes("::ENDREPLY::") ? replyingTo.content.split("::ENDREPLY::")[1] : replyingTo.content)
                 : `[${replyingTo.message_type.toUpperCase()}]`}
             </div>
-            <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-white px-2">✕</button>
+            <button onClick={() => setReplyingTo(null)} className="text-gray-500 hover:text-white px-2 transition">✕</button>
           </div>
         )}
 
         {isRecording ? (
-          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-blue-600/20 border border-blue-500/30">
-            <span className="text-blue-500 font-medium flex items-center gap-3 px-2">
-              <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
-              Audio Search...
+          <div className="flex items-center justify-between gap-2 p-2 rounded-full bg-purple-600/20 border border-purple-500/30">
+            <span className="text-purple-400 font-medium flex items-center gap-3 px-3">
+              <span className="w-3 h-3 rounded-full bg-purple-500 animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.8)]"></span>
+              Recording Voice...
             </span>
             <button 
               type="button" 
               onClick={stopRecording} 
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm sm:text-base font-medium whitespace-nowrap text-white"
+              className="rounded-full bg-purple-600 hover:bg-purple-500 px-5 py-2 text-sm sm:text-base font-medium whitespace-nowrap text-white transition shadow-lg"
             >
-              Search
+              Send
             </button>
           </div>
         ) : (
-          <form onSubmit={sendTextMessage} className="flex items-center gap-1 sm:gap-2">
-            <button
-              type="button"
-              onClick={() => setShowStickers(!showStickers)}
-              className={`cursor-pointer text-xl p-1 sm:p-2 rounded-full flex-shrink-0 transition-colors ${showStickers ? "bg-blue-500/20 text-blue-400" : "hover:bg-gray-800 grayscale opacity-50 text-white"}`}
-              title="Stickers"
-            >
-              🐶
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsViewOnce(!isViewOnce)}
-              className={`cursor-pointer text-lg p-1 sm:p-2 rounded-full flex-shrink-0 transition-colors ${isViewOnce ? "bg-red-500/20 text-red-400" : "hover:bg-gray-800 grayscale opacity-50"}`}
-              title="Toggle View Once"
-            >
-              💣
-            </button>
-            <label className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0 transition-colors">
-              📷
-              <input type="file" accept="image/*" capture="environment" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
-            </label>
-            <button 
-              type="button" 
-              onClick={startRecording}
-              className="cursor-pointer text-lg sm:text-xl p-1 sm:p-2 hover:bg-gray-800 rounded-full flex-shrink-0 transition-colors"
-            >
-              🎙️
-            </button>
-            <input
-              type="text"
-              placeholder="Search ISBN or Book Title..."
-              value={newMessage}
-              onChange={handleTyping}
-              className="flex-1 min-w-0 rounded-xl bg-gray-800 px-3 py-2 text-sm sm:text-base text-white focus:outline-none"
-            />
-            <button type="submit" disabled={uploading} className="rounded-xl bg-blue-600 px-3 py-2 text-sm sm:text-base font-medium whitespace-nowrap flex-shrink-0 transition hover:bg-blue-500 disabled:opacity-50">
-              {uploading ? "..." : "Search"}
-            </button>
+          <form onSubmit={sendTextMessage} className="flex items-end gap-2 w-full">
+            <div className="flex-1 flex items-end gap-1 sm:gap-2 bg-[#1e1e22] border border-gray-800 rounded-3xl px-2 py-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
+              <button type="button" onClick={() => {setShowEmojiPicker(!showEmojiPicker); setShowStickers(false);}} className={`p-2 text-xl transition ${showEmojiPicker ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Emojis">😊</button>
+              <input
+                type="text"
+                placeholder="Message"
+                value={newMessage}
+                onChange={handleTyping}
+                className="flex-1 min-w-0 bg-transparent px-1 py-2.5 text-[15px] text-gray-100 placeholder-gray-500 focus:outline-none"
+              />
+              <label className="p-2 text-xl opacity-60 hover:opacity-100 hover:text-purple-400 transition cursor-pointer" title="Attach Media">
+                📎
+                <input type="file" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
+              </label>
+              <button type="button" onClick={() => setIsViewOnce(!isViewOnce)} className={`p-2 text-xl transition ${isViewOnce ? "text-purple-500 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="View Once">💣</button>
+              <button type="button" onClick={() => {setShowStickers(!showStickers); setShowEmojiPicker(false);}} className={`p-2 text-xl transition ${showStickers ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Stickers">🐶</button>
+            </div>
+            
+            {newMessage.trim() ? (
+              <button type="submit" disabled={uploading} className="w-[50px] h-[50px] rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.4)] flex-shrink-0 transform active:scale-95 transition-all text-xl text-white">
+                {uploading ? "..." : "➤"}
+              </button>
+            ) : (
+              <button type="button" onClick={startRecording} className="w-[50px] h-[50px] rounded-full bg-[#1e1e22] border border-gray-700 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex-shrink-0 transform active:scale-95 transition-all text-xl text-purple-400 hover:text-purple-300">
+                🎙️
+              </button>
+            )}
           </form>
         )}
       </footer>
@@ -1384,17 +1393,21 @@ export default function ChatApp() {
 
       {/* Lock Screen Overlay */}
       {isLocked && (
-        <div className="fixed inset-0 z-[500] bg-gray-950 flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-2">Session Locked</h2>
-            <p className="text-gray-400 mb-8">Please enter your password to resume.</p>
+        <div className="fixed inset-0 z-[500] bg-[#0d0d0f]/95 flex flex-col items-center justify-center p-4 backdrop-blur-xl">
+          <div className="w-full max-w-sm bg-[#151518] border border-gray-800/80 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-indigo-500"></div>
+            <div className="w-16 h-16 bg-[#1e1e22] rounded-full flex items-center justify-center text-2xl mb-6 mx-auto border border-gray-800 shadow-inner text-purple-400">
+              🔒
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2 text-center tracking-wide">Session Locked</h2>
+            <p className="text-gray-400 mb-8 text-center text-sm">Verify your identity to resume.</p>
             <form onSubmit={(e) => {
               e.preventDefault();
               if (unlockPassword === currentUser) {
                 setIsLocked(false);
                 setUnlockPassword("");
                 if (currentUser === "i") {
-                  setIsThemeSelectionMode(true); // Drop into theme selection disguised 2FA
+                  setIsThemeSelectionMode(true);
                 }
               } else if (currentUser === "i" && unlockPassword === "imaya") {
                 setIsLocked(false);
@@ -1418,18 +1431,17 @@ export default function ChatApp() {
               }
             }} autoComplete="off" className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
                 <input 
                   type="password" 
                   autoComplete="new-password"
                   value={unlockPassword}
                   onChange={(e) => setUnlockPassword(e.target.value)}
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full bg-[#0d0d0f] border border-gray-800 rounded-2xl px-5 py-4 text-white focus:outline-none focus:ring-1 focus:ring-purple-500 transition text-center tracking-[0.5em] text-lg shadow-inner"
                   placeholder="••••••••"
                   required
                 />
               </div>
-              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition shadow-lg shadow-blue-500/20">
+              <button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white font-semibold py-4 rounded-2xl transition shadow-[0_4px_15px_rgba(147,51,234,0.3)] mt-2">
                 Unlock
               </button>
             </form>
