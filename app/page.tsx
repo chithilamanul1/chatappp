@@ -1214,30 +1214,30 @@ export default function ChatApp() {
             </button>
           </div>
         ) : (
-          <form onSubmit={sendTextMessage} className="flex items-end gap-2 w-full">
-            <div className="flex-1 flex items-end gap-1 sm:gap-2 bg-[#1e1e22] border border-gray-800 rounded-3xl px-2 py-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-              <button type="button" onClick={() => {setShowEmojiPicker(!showEmojiPicker); setShowStickers(false);}} className={`p-2 text-xl transition ${showEmojiPicker ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Emojis">😊</button>
+          <form onSubmit={sendTextMessage} className="flex items-end gap-1.5 sm:gap-2 w-full">
+            <div className="flex-1 flex items-end gap-0.5 sm:gap-2 bg-[#1e1e22] border border-gray-800 rounded-3xl px-1 sm:px-2 py-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] min-w-0">
+              <button type="button" onClick={() => {setShowEmojiPicker(!showEmojiPicker); setShowStickers(false);}} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${showEmojiPicker ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Emojis">😊</button>
               <input
                 type="text"
                 placeholder="Message"
                 value={newMessage}
                 onChange={handleTyping}
-                className="flex-1 min-w-0 bg-transparent px-1 py-2.5 text-[15px] text-gray-100 placeholder-gray-500 focus:outline-none"
+                className="flex-1 min-w-0 bg-transparent px-1 py-2 sm:py-2.5 text-[14px] sm:text-[15px] text-gray-100 placeholder-gray-500 focus:outline-none"
               />
-              <label className="p-2 text-xl opacity-60 hover:opacity-100 hover:text-purple-400 transition cursor-pointer" title="Attach Media">
+              <label className="p-1.5 sm:p-2 text-lg sm:text-xl opacity-60 hover:opacity-100 hover:text-purple-400 transition cursor-pointer flex-shrink-0" title="Attach Media">
                 📎
                 <input type="file" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
               </label>
-              <button type="button" onClick={() => setIsViewOnce(!isViewOnce)} className={`p-2 text-xl transition ${isViewOnce ? "text-purple-500 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="View Once">💣</button>
-              <button type="button" onClick={() => {setShowStickers(!showStickers); setShowEmojiPicker(false);}} className={`p-2 text-xl transition ${showStickers ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Stickers">🐶</button>
+              <button type="button" onClick={() => setIsViewOnce(!isViewOnce)} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${isViewOnce ? "text-purple-500 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="View Once">💣</button>
+              <button type="button" onClick={() => {setShowStickers(!showStickers); setShowEmojiPicker(false);}} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${showStickers ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Stickers">🐶</button>
             </div>
             
             {newMessage.trim() ? (
-              <button type="submit" disabled={uploading} className="w-[50px] h-[50px] rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.4)] flex-shrink-0 transform active:scale-95 transition-all text-xl text-white">
+              <button type="submit" disabled={uploading} className="w-10 h-10 sm:w-[50px] sm:h-[50px] rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.4)] flex-shrink-0 transform active:scale-95 transition-all text-lg sm:text-xl text-white">
                 {uploading ? "..." : "➤"}
               </button>
             ) : (
-              <button type="button" onClick={startRecording} className="w-[50px] h-[50px] rounded-full bg-[#1e1e22] border border-gray-700 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex-shrink-0 transform active:scale-95 transition-all text-xl text-purple-400 hover:text-purple-300">
+              <button type="button" onClick={startRecording} className="w-10 h-10 sm:w-[50px] sm:h-[50px] rounded-full bg-[#1e1e22] border border-gray-700 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.3)] flex-shrink-0 transform active:scale-95 transition-all text-lg sm:text-xl text-purple-400 hover:text-purple-300">
                 🎙️
               </button>
             )}
