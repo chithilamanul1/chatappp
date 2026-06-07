@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Free E-Book Library",
   description: "Download free PDF textbooks, study guides, and e-books.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Library",
+  },
   openGraph: {
     title: "Free E-Book Library",
     description: "Download free PDF textbooks, study guides, and e-books.",
@@ -22,6 +28,14 @@ export const metadata: Metadata = {
     siteName: "E-Book Library",
     type: "website",
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#0d0d0f",
 };
 
 export default function RootLayout({
@@ -32,9 +46,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="fixed inset-0 overflow-hidden bg-[#0d0d0f]">{children}</body>
     </html>
   );
 }
