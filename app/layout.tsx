@@ -36,6 +36,7 @@ export const viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: "#0d0d0f",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
@@ -48,7 +49,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="fixed inset-0 overflow-hidden bg-[#0d0d0f]">{children}</body>
+      <body className="bg-[#0d0d0f] overscroll-none">{children}</body>
     </html>
   );
 }

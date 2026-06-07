@@ -880,7 +880,7 @@ export default function ChatApp() {
 
   if (!isLoggedIn) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#0d0d0f] p-4 text-gray-100">
+      <div className="flex h-[100dvh] items-center justify-center bg-[#0d0d0f] p-4 text-gray-100">
         <form onSubmit={handleLogin} autoComplete="off" className="w-full max-w-sm rounded-3xl bg-[#151518] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-gray-800/50 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-indigo-500"></div>
           <h2 className="mb-8 text-center text-2xl font-semibold text-white tracking-wide">Secure Access</h2>
@@ -946,7 +946,7 @@ export default function ChatApp() {
     };
 
     return (
-      <div className="flex h-full flex-col items-center justify-center bg-[#0d0d0f] p-6 text-white font-sans selection:bg-none">
+      <div className="flex h-[100dvh] flex-col items-center justify-center bg-[#0d0d0f] p-6 text-white font-sans selection:bg-none">
         <h2 className="text-xl sm:text-2xl font-semibold mb-12 tracking-wide text-gray-200">Select Library Theme</h2>
         <div className="grid grid-cols-2 gap-8 w-full max-w-xs">
           {colors.map(c => (
@@ -969,7 +969,7 @@ export default function ChatApp() {
   // FAKE DECOY MODE (triggered by panic passwords)
   if (isDecoyMode) {
     return (
-      <div className="flex h-full flex-col bg-slate-100 overflow-hidden text-gray-900 font-sans">
+      <div className="flex h-[100dvh] flex-col bg-slate-100 overflow-hidden text-gray-900 font-sans">
         <header className="bg-white p-4 sm:p-5 flex justify-between items-center shadow-sm z-20 border-b border-gray-200">
            <h1 className="text-xl font-bold text-slate-800">📚 Global University PDF Library</h1>
            <button onClick={() => { setIsLoggedIn(false); setIsDecoyMode(false); }} className="text-sm font-medium text-blue-600 hover:text-blue-700">Sign Out</button>
@@ -1007,7 +1007,7 @@ export default function ChatApp() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-[#0d0d0f] text-gray-100 max-w-md mx-auto sm:border-x border-gray-800 shadow-2xl relative overflow-hidden">
+    <div className="flex h-[100dvh] w-full flex-col bg-[#0d0d0f] text-gray-100 max-w-md mx-auto sm:border-x border-gray-800 shadow-2xl relative overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between bg-[#151518] p-3 sm:p-4 border-b border-gray-800/50 shadow-md z-10">
         <div className="flex items-center gap-3">
