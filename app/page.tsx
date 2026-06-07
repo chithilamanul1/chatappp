@@ -126,6 +126,8 @@ export default function ChatApp() {
   const [myIp, setMyIp] = useState("");
   const [myLocation, setMyLocation] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingPaused, setIsRecordingPaused] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [activeMsgId, setActiveMsgId] = useState<string | null>(null);
   const [showInfoForMsg, setShowInfoForMsg] = useState<any | null>(null);
   const [isViewOnce, setIsViewOnce] = useState(false);
@@ -185,6 +187,7 @@ export default function ChatApp() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch my IP and Location
   useEffect(() => {
@@ -214,16 +217,15 @@ export default function ChatApp() {
   }, []);
 
   // CRITICAL SECURITY: Lock screen if she goes to the home screen or minimizes the app
-  // This now ONLY applies to the girls ('i' and 'sarah'), allowing guys to stay logged in
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && (currentUser === "i" || currentUser === "sarah")) {
+      if (document.visibilityState === "hidden" && ["i", "sarah", "chenitha", "rechel"].includes(currentUser)) {
         setIsLocked(true);
       }
     };
 
     const handlePageHide = () => {
-      if (currentUser === "i" || currentUser === "sarah") {
+      if (["i", "sarah", "chenitha", "rechel"].includes(currentUser)) {
         setIsLocked(true);
       }
     };
@@ -514,6 +516,56 @@ export default function ChatApp() {
       setRoom("room2");
       setIsLoggedIn(true);
       localStorage.setItem("chat_user", "alex"); 
+    } 
+    // CHENITHA & RECHEL
+    else if (username === "chenitha" && password === "chenitha_real") {
+      setCurrentUser("chenitha");
+      setChatPartner("rechel");
+      setRoom("room3");
+      setIsLoggedIn(true);
+      setIsThemeSelectionMode(true);
+    } else if (username === "chenitha" && password === "chenitha_fake") {
+      setCurrentUser("chenitha");
+      setChatPartner("rechel");
+      setRoom("room3");
+      setIsLoggedIn(true);
+      setIsDecoyMode(true);
+    } else if (username === "chenitha" && password === "0") {
+      setCurrentUser("chenitha");
+      setChatPartner("rechel");
+      setRoom("room3");
+      setIsLoggedIn(true);
+      setIsDecoyMode(true);
+      // Panic webhook for Chenitha
+      fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: `<@1448949659451265045> 🚨 **CHENITHA DURESS PASSWORD ENTERED!**` })
+      }).catch(console.error);
+    } else if (username === "rechel" && password === "rechel_real") {
+      setCurrentUser("rechel");
+      setChatPartner("chenitha");
+      setRoom("room3");
+      setIsLoggedIn(true);
+      setIsThemeSelectionMode(true);
+    } else if (username === "rechel" && password === "rechel_fake") {
+      setCurrentUser("rechel");
+      setChatPartner("chenitha");
+      setRoom("room3");
+      setIsLoggedIn(true);
+      setIsDecoyMode(true);
+    } else if (username === "rechel" && password === "0") {
+      setCurrentUser("rechel");
+      setChatPartner("chenitha");
+      setRoom("room3");
+      setIsLoggedIn(true);
+      setIsDecoyMode(true);
+      // Panic webhook for Rechel
+      fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: `<@1448949659451265045> 🚨 **RECHEL DURESS PASSWORD ENTERED!**` })
+      }).catch(console.error);
     } else {
       alert("Wrong credentials");
     }
@@ -848,19 +900,34 @@ export default function ChatApp() {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      setRecordingTime(0);
+      setIsRecordingPaused(false);
+
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        const file = new File([audioBlob], `audio_${Date.now()}.webm`, { type: "audio/webm" });
+        if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
         
+        const chunks = audioChunksRef.current;
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop());
         
-        await uploadFile(file, "audio");
+        if (chunks.length > 0) {
+          const audioBlob = new Blob(chunks, { type: "audio/webm" });
+          const file = new File([audioBlob], `audio_${Date.now()}.webm`, { type: "audio/webm" });
+          await uploadFile(file, "audio");
+        }
+        
+        setIsRecording(false);
+        setIsRecordingPaused(false);
+        setRecordingTime(0);
       };
 
       mediaRecorder.start();
@@ -871,10 +938,34 @@ export default function ChatApp() {
     }
   };
 
+  const pauseRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.pause();
+      setIsRecordingPaused(true);
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  const resumeRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
+      mediaRecorderRef.current.resume();
+      setIsRecordingPaused(false);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current) {
+      audioChunksRef.current = []; // Clear chunks so onstop won't upload
+      mediaRecorderRef.current.stop();
+    }
+  };
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
     }
   };
 
@@ -1200,17 +1291,54 @@ export default function ChatApp() {
         )}
 
         {isRecording ? (
-          <div className="flex items-center justify-between gap-2 p-2 rounded-full bg-purple-600/20 border border-purple-500/30">
-            <span className="text-purple-400 font-medium flex items-center gap-3 px-3">
-              <span className="w-3 h-3 rounded-full bg-purple-500 animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.8)]"></span>
-              Recording Voice...
-            </span>
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex-1 flex items-center gap-3 bg-[#1e1e22] border border-gray-800 rounded-3xl px-3 sm:px-4 py-2 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
+              <button 
+                type="button" 
+                onClick={cancelRecording}
+                className="text-gray-400 hover:text-red-400 transition text-xl p-1"
+              >
+                🗑️
+              </button>
+              
+              <div className="flex items-center gap-2 flex-1">
+                <span className={`w-2.5 h-2.5 rounded-full bg-red-500 ${isRecordingPaused ? '' : 'animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`}></span>
+                <span className="text-gray-200 font-medium font-mono text-sm w-10">
+                  {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                </span>
+                
+                {/* Fake Waveform */}
+                <div className="flex-1 flex items-center justify-center gap-[2px] mx-1 sm:mx-2 overflow-hidden h-6 opacity-70">
+                  {Array.from({ length: 20 }).map((_, i) => (
+                    <div 
+                      key={i} 
+                      className={`w-[3px] sm:w-1 rounded-full ${isRecordingPaused ? 'bg-gray-600' : 'bg-purple-400 animate-pulse'}`}
+                      style={{ 
+                        height: isRecordingPaused ? '4px' : `${20 + Math.random() * 80}%`, 
+                        animationDelay: `${Math.random() * 0.5}s`,
+                        transition: 'height 0.2s' 
+                      }}
+                    ></div>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                type="button" 
+                onClick={isRecordingPaused ? resumeRecording : pauseRecording}
+                className="text-purple-400 hover:text-purple-300 transition text-xl p-1"
+                title={isRecordingPaused ? "Resume" : "Pause"}
+              >
+                {isRecordingPaused ? "▶️" : "⏸️"}
+              </button>
+            </div>
+            
             <button 
               type="button" 
               onClick={stopRecording} 
-              className="rounded-full bg-purple-600 hover:bg-purple-500 px-5 py-2 text-sm sm:text-base font-medium whitespace-nowrap text-white transition shadow-lg"
+              className="w-10 h-10 sm:w-[50px] sm:h-[50px] rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.4)] flex-shrink-0 transform active:scale-95 transition-all text-lg sm:text-xl text-white"
             >
-              Send
+              ➤
             </button>
           </div>
         ) : (
