@@ -219,13 +219,13 @@ export default function ChatApp() {
   // CRITICAL SECURITY: Lock screen if she goes to the home screen or minimizes the app
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && ["i", "sarah", "chenitha", "rechel"].includes(currentUser)) {
+      if (document.visibilityState === "hidden" && ["i", "sarah", "c", "r"].includes(currentUser)) {
         setIsLocked(true);
       }
     };
 
     const handlePageHide = () => {
-      if (["i", "sarah", "chenitha", "rechel"].includes(currentUser)) {
+      if (["i", "sarah", "c", "r"].includes(currentUser)) {
         setIsLocked(true);
       }
     };
@@ -470,7 +470,7 @@ export default function ChatApp() {
       setChatPartner("user2");
       setRoom("room1");
       setIsLoggedIn(true);
-      setIsDecoyMode(true);
+      setIsThemeSelectionMode(true);
       return;
     } 
     
@@ -518,21 +518,15 @@ export default function ChatApp() {
       localStorage.setItem("chat_user", "alex"); 
     } 
     // CHENITHA & RECHEL
-    else if (username === "chenitha" && password === "chenitha_real") {
-      setCurrentUser("chenitha");
-      setChatPartner("rechel");
+    else if (username === "c" && password === "c") {
+      setCurrentUser("c");
+      setChatPartner("r");
       setRoom("room3");
       setIsLoggedIn(true);
       setIsThemeSelectionMode(true);
-    } else if (username === "chenitha" && password === "chenitha_fake") {
-      setCurrentUser("chenitha");
-      setChatPartner("rechel");
-      setRoom("room3");
-      setIsLoggedIn(true);
-      setIsDecoyMode(true);
-    } else if (username === "chenitha" && password === "0") {
-      setCurrentUser("chenitha");
-      setChatPartner("rechel");
+    } else if (username === "c" && password === "0") {
+      setCurrentUser("c");
+      setChatPartner("r");
       setRoom("room3");
       setIsLoggedIn(true);
       setIsDecoyMode(true);
@@ -542,21 +536,15 @@ export default function ChatApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: `<@1448949659451265045> 🚨 **CHENITHA DURESS PASSWORD ENTERED!**` })
       }).catch(console.error);
-    } else if (username === "rechel" && password === "rechel_real") {
-      setCurrentUser("rechel");
-      setChatPartner("chenitha");
+    } else if (username === "r" && password === "r") {
+      setCurrentUser("r");
+      setChatPartner("c");
       setRoom("room3");
       setIsLoggedIn(true);
       setIsThemeSelectionMode(true);
-    } else if (username === "rechel" && password === "rechel_fake") {
-      setCurrentUser("rechel");
-      setChatPartner("chenitha");
-      setRoom("room3");
-      setIsLoggedIn(true);
-      setIsDecoyMode(true);
-    } else if (username === "rechel" && password === "0") {
-      setCurrentUser("rechel");
-      setChatPartner("chenitha");
+    } else if (username === "r" && password === "0") {
+      setCurrentUser("r");
+      setChatPartner("c");
       setRoom("room3");
       setIsLoggedIn(true);
       setIsDecoyMode(true);
