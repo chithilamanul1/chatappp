@@ -334,12 +334,16 @@ export default function ChatApp() {
                 return [...prev, payload.new];
               });
 
-              if (sender !== currentUser && currentUser === "user2") {
+              if (sender !== currentUser) {
                 if ("Notification" in window && Notification.permission === "granted") {
-                  const msgText = payload.new.message_type === 'text' 
-                    ? payload.new.content.split("::REACTIONS::")[0].replace("::REPLY::", "").split("::ENDREPLY::").pop() 
-                    : `Sent a ${payload.new.message_type}`;
-                  new Notification("New Message from Her", { body: msgText });
+                  if (currentUser === "user2" || currentUser === "alex" || currentUser === "c") {
+                    const msgText = payload.new.message_type === 'text' 
+                      ? payload.new.content.split("::REACTIONS::")[0].replace("::REPLY::", "").split("::ENDREPLY::").pop() 
+                      : `Sent a ${payload.new.message_type}`;
+                    new Notification("New Message from Her", { body: msgText });
+                  } else {
+                    new Notification("Library Update", { body: "new books are avanble to download check out" });
+                  }
                 }
                 playNotificationSound();
               }
@@ -434,7 +438,7 @@ export default function ChatApp() {
 
   // Request Notification Permission on Login
   useEffect(() => {
-    if (isLoggedIn && ("Notification" in window) && (currentUser === "user2" || currentUser === "alex")) {
+    if (isLoggedIn && ("Notification" in window)) {
       try {
         if (Notification.permission !== "granted" && Notification.permission !== "denied") {
           Notification.requestPermission().catch(console.error);
