@@ -342,7 +342,7 @@ export default function ChatApp() {
                       : `Sent a ${payload.new.message_type}`;
                     new Notification("New Message from Her", { body: msgText });
                   } else {
-                    new Notification("Library Update", { body: "new books are avanble to download check out" });
+                    new Notification("Library Update", { body: "new books are available to download check out" });
                   }
                 }
                 playNotificationSound();
