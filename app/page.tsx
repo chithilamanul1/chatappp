@@ -113,6 +113,7 @@ const playNotificationSound = () => {
 export default function ChatApp() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState("");
   const [chatPartner, setChatPartner] = useState("");
@@ -238,6 +239,30 @@ export default function ChatApp() {
       window.removeEventListener("pagehide", handlePageHide);
     };
   }, [currentUser]);
+
+  // Countdown to April 25, 2027
+  useEffect(() => {
+    const targetDate = new Date('2027-04-25T00:00:00').getTime();
+    
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const difference = targetDate - now;
+      
+      if (difference > 0) {
+        setTimeLeft({
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          mins: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+          secs: Math.floor((difference % (1000 * 60)) / 1000)
+        });
+      }
+    };
+    
+    calculateTimeLeft(); // Initial calculation
+    const timer = setInterval(calculateTimeLeft, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
 
   // Online/Offline Presence Tracking
   useEffect(() => {
@@ -1102,6 +1127,9 @@ export default function ChatApp() {
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-gray-100 tracking-wide text-base">{currentUser === 'user2' ? 'Ima' : 'Kathy Gomez'}</span>
+            <div className="text-[10px] text-pink-400 font-mono tracking-tighter bg-pink-500/10 px-1.5 rounded inline-block w-max mt-0.5 border border-pink-500/20">
+              {timeLeft.days}d {timeLeft.hours}h {timeLeft.mins}m {timeLeft.secs}s ❤️
+            </div>
             <div className="text-[11px] flex flex-col mt-0.5">
               {isPartnerOnline ? (
                 <>
