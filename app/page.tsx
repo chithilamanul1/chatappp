@@ -240,9 +240,9 @@ export default function ChatApp() {
     };
   }, [currentUser]);
 
-  // Countdown to April 25, 2027
+  // Countdown to April 25, 2028
   useEffect(() => {
-    const targetDate = new Date('2027-04-25T00:00:00').getTime();
+    const targetDate = new Date('2028-04-25T00:00:00').getTime();
     
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
