@@ -28,13 +28,13 @@ const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    
+
     const setAudioData = () => {
       if (audio.duration !== Infinity) {
         setDuration(audio.duration);
       }
     };
-    
+
     const setAudioTime = () => setCurrentTime(audio.currentTime);
     const setAudioEnd = () => { setIsPlaying(false); setCurrentTime(0); };
 
@@ -68,8 +68,8 @@ const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
 
   return (
     <div className={`flex items-center gap-3 p-2 rounded-2xl ${isMe ? "bg-purple-600/30" : "bg-gray-800/80"} w-[240px] sm:w-[280px] my-1 shadow-inner border border-gray-700/30`}>
-      <button 
-        onClick={togglePlay} 
+      <button
+        onClick={togglePlay}
         className={`w-10 h-10 rounded-full ${isMe ? "bg-purple-500 hover:bg-purple-400" : "bg-gray-600 hover:bg-gray-500"} flex items-center justify-center flex-shrink-0 text-white shadow-md transition`}
       >
         {isPlaying ? (
@@ -78,16 +78,16 @@ const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
           <span className="ml-1 w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent"></span>
         )}
       </button>
-      
+
       <div className="flex-1 flex flex-col justify-center">
-        <div 
+        <div
           className="w-full h-6 flex items-center gap-[2px] mb-1 cursor-pointer relative"
           onClick={handleSeek}
         >
           {Array.from({ length: 30 }).map((_, i) => (
-            <div 
-              key={i} 
-              className={`flex-1 rounded-full transition-all ${i / 30 * 100 <= progress ? "bg-purple-400" : "bg-gray-500/50"}`} 
+            <div
+              key={i}
+              className={`flex-1 rounded-full transition-all ${i / 30 * 100 <= progress ? "bg-purple-400" : "bg-gray-500/50"}`}
               style={{ height: `${20 + Math.random() * 80}%` }}
             ></div>
           ))}
@@ -107,7 +107,7 @@ const playNotificationSound = () => {
   try {
     const audio = new Audio("https://actions.google.com/sounds/v1/communications/incoming_message.ogg");
     audio.play().catch(e => console.log("Audio blocked:", e));
-  } catch(e) {}
+  } catch (e) { }
 };
 
 export default function ChatApp() {
@@ -133,17 +133,26 @@ export default function ChatApp() {
   const [showInfoForMsg, setShowInfoForMsg] = useState<any | null>(null);
   const [isViewOnce, setIsViewOnce] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [enlargedMedia, setEnlargedMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
   const [showStickers, setShowStickers] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [toast, setToast] = useState<{ title: string, body: string } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const emojis = {
-    "Smileys & People": ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","☺","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🫡","🤐","🫥","😐","😑","😶","🫠","😏","😒","🙄","😬","🤥","🫨","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","🥸","😎","🤓","🧐","😕","🫤","😟","🙁","☹","😮","😯","😲","😳","🥺","🥹","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿"],
-    "Gestures": ["👋","🤚","🖐","✋","🖖","🫱","🫲","🫳","🫴","👌","🤌","🤏","✌","🤞","🫰","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝","🫵","👍","👎","✊","👊","🤛","🤜","👏","🫶","🙌","👐","🤲","🤝","🙏"],
-    "Hearts & Symbols": ["❤","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❤️‍🔥","💕","💞","💓","💗","💖","💘","💝","💟","☮","✝","☪","🕉","☸","✡","🔯","🕎","☯","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","⛎","🔀","🔁","🔂","⏩","⏪","⏫","⏬"],
-    "Animals & Nature": ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐻‍❄","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🪱","🐛","🦋","🐌","🐞","🐜","🪰","🪲","🪳","🦟","🦗","🕷","🦂","🐢","🐍","🦎","🦖","🦕"],
-    "Food": ["🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶","🫑","🌽","🥕","🫒","🧄","🧅","🥔","🍠","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓","🥩","🍗","🍖","🦴","🌭","🍔","🍟","🍕"]
+    "Smileys & People": ["😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂", "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩", "😘", "😗", "☺", "😚", "😙", "🥲", "😋", "😛", "😜", "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🫡", "🤐", "🫥", "😐", "😑", "😶", "🫠", "😏", "😒", "🙄", "😬", "🤥", "🫨", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯", "🤠", "🥳", "🥸", "😎", "🤓", "🧐", "😕", "🫤", "😟", "🙁", "☹", "😮", "😯", "😲", "😳", "🥺", "🥹", "😦", "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖", "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡", "😠", "🤬", "😈", "👿"],
+    "Gestures": ["👋", "🤚", "🖐", "✋", "🖖", "🫱", "🫲", "🫳", "🫴", "👌", "🤌", "🤏", "✌", "🤞", "🫰", "🤟", "🤘", "🤙", "👈", "👉", "👆", "🖕", "👇", "☝", "🫵", "👍", "👎", "✊", "👊", "🤛", "🤜", "👏", "🫶", "🙌", "👐", "🤲", "🤝", "🙏"],
+    "Hearts & Symbols": ["❤", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "❤️‍🔥", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "☮", "✝", "☪", "🕉", "☸", "✡", "🔯", "🕎", "☯", "♈", "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐", "♑", "♒", "♓", "⛎", "🔀", "🔁", "🔂", "⏩", "⏪", "⏫", "⏬"],
+    "Animals & Nature": ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐻‍❄", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈", "🙉", "🙊", "🐒", "🐔", "🐧", "🐦", "🐤", "🐣", "🐥", "🦆", "🦅", "🦉", "🦇", "🐺", "🐗", "🐴", "🦄", "🐝", "🪱", "🐛", "🦋", "🐌", "🐞", "🐜", "🪰", "🪲", "🪳", "🦟", "🦗", "🕷", "🦂", "🐢", "🐍", "🦎", "🦖", "🦕"],
+    "Food": ["🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🥦", "🥬", "🥒", "🌶", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🥔", "🍠", "🥐", "🥯", "🍞", "🥖", "🥨", "🧀", "🥚", "🍳", "🧈", "🥞", "🧇", "🥓", "🥩", "🍗", "🍖", "🦴", "🌭", "🍔", "🍟", "🍕"]
   };
-  
+
   const stickers = [
     "https://fonts.gstatic.com/s/e/notoemoji/latest/1f97a/512.gif",
     "https://fonts.gstatic.com/s/e/notoemoji/latest/2764_fe0f/512.gif",
@@ -156,7 +165,7 @@ export default function ChatApp() {
     "https://fonts.gstatic.com/s/e/notoemoji/latest/2728/512.gif",
     "https://fonts.gstatic.com/s/e/notoemoji/latest/1f525/512.gif"
   ];
-  
+
   // WebRTC Call State
   const [callState, setCallState] = useState<"idle" | "calling" | "ringing" | "connected">("idle");
   const [isVideoCall, setIsVideoCall] = useState(true);
@@ -243,11 +252,11 @@ export default function ChatApp() {
   // Countdown to April 25, 2028
   useEffect(() => {
     const targetDate = new Date('2028-04-25T00:00:00').getTime();
-    
+
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
       const difference = targetDate - now;
-      
+
       if (difference > 0) {
         setTimeLeft({
           days: Math.floor(difference / (1000 * 60 * 60 * 24)),
@@ -257,10 +266,10 @@ export default function ChatApp() {
         });
       }
     };
-    
+
     calculateTimeLeft(); // Initial calculation
     const timer = setInterval(calculateTimeLeft, 1000);
-    
+
     return () => clearInterval(timer);
   }, []);
 
@@ -269,15 +278,15 @@ export default function ChatApp() {
     if (!isLoggedIn || !room) return;
 
     const presenceChannel = supabase.channel(`presence-${room}`);
-    
+
     presenceChannel
       .on('presence', { event: 'sync' }, () => {
         const newState = presenceChannel.presenceState();
-        
+
         let online = false;
         let pIp = "";
         let pLoc = "";
-        
+
         for (const id in newState) {
           const stateData: any = newState[id][0];
           if (stateData?.user_id === chatPartner) {
@@ -286,15 +295,20 @@ export default function ChatApp() {
             pLoc = stateData.location || "";
           }
         }
-        
+
         setIsPartnerOnline(online);
         setPartnerIp(pIp);
         setPartnerLocation(pLoc);
 
         if (!isInitialLoadRef.current) {
-          if (online && !previousOnlineRef.current && currentUser === "user2") {
+          if (online && !previousOnlineRef.current) {
+            const title = (currentUser === "user2" || currentUser === "alex" || currentUser === "c") ? "She is Online!" : "Library Update";
+            const body = (currentUser === "user2" || currentUser === "alex" || currentUser === "c") ? `IP: ${pIp} - ${pLoc}` : "New books are available in the E-book library.";
+
+            setToast({ title, body });
+
             if ("Notification" in window && Notification.permission === "granted") {
-              new Notification("She is Online!", { body: `IP: ${pIp} - ${pLoc}` });
+              new Notification(title, { body });
             }
             playNotificationSound();
           }
@@ -305,8 +319,8 @@ export default function ChatApp() {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({ 
-            user_id: currentUser, 
+          await presenceChannel.track({
+            user_id: currentUser,
             online_at: new Date().toISOString(),
             ip: myIp,
             location: myLocation
@@ -360,15 +374,15 @@ export default function ChatApp() {
               });
 
               if (sender !== currentUser) {
+                const title = (currentUser === "user2" || currentUser === "alex" || currentUser === "c") ? "New Message from Her" : "Library Update";
+                const body = (currentUser === "user2" || currentUser === "alex" || currentUser === "c")
+                  ? (payload.new.message_type === 'text' ? payload.new.content.split("::REACTIONS::")[0].replace("::REPLY::", "").split("::ENDREPLY::").pop() : `Sent a ${payload.new.message_type}`)
+                  : "new books are available to download check out";
+
+                setToast({ title, body });
+
                 if ("Notification" in window && Notification.permission === "granted") {
-                  if (currentUser === "user2" || currentUser === "alex" || currentUser === "c") {
-                    const msgText = payload.new.message_type === 'text' 
-                      ? payload.new.content.split("::REACTIONS::")[0].replace("::REPLY::", "").split("::ENDREPLY::").pop() 
-                      : `Sent a ${payload.new.message_type}`;
-                    new Notification("New Message from Her", { body: msgText });
-                  } else {
-                    new Notification("Library Update", { body: "new books are available to download check out" });
-                  }
+                  new Notification(title, { body });
                 }
                 playNotificationSound();
               }
@@ -448,7 +462,7 @@ export default function ChatApp() {
       const markAsRead = async () => {
         const unreadIds = unreadMessages.map(m => m.id);
         const now = new Date().toISOString();
-        
+
         // Optimistically update local state so we don't spam the database
         setMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, read: true, read_at: now, read_by_ip: myIp } : m));
 
@@ -490,9 +504,48 @@ export default function ChatApp() {
     previousOnlineRef.current = isPartnerOnline;
   }, [isPartnerOnline, currentUser]);
 
+  const subscribeToPush = async (user: string) => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const registration = await navigator.serviceWorker.register('/sw.js');
+
+        const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!publicVapidKey) return;
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: publicVapidKey
+        });
+
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription, userId: user })
+        });
+      } catch (error) {
+        console.error('Service Worker or Push Subscription failed:', error);
+      }
+    }
+  };
+
+  const sendPushNotification = (partner: string, msgType: string) => {
+    const isPartnerDisguised = partner === "i" || partner === "sarah" || partner === "c" || partner === "r";
+    const title = isPartnerDisguised ? "Library Update" : "New Message from Her";
+    const body = isPartnerDisguised ? "New books are available in the E-book library." : `Sent a ${msgType}`;
+
+    fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: partner, title, body })
+    }).catch(console.error);
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // DURESS PASSWORDS
     if (username === "i" && password === "imaya") {
       setCurrentUser("i");
@@ -500,9 +553,10 @@ export default function ChatApp() {
       setRoom("room1");
       setIsLoggedIn(true);
       setIsThemeSelectionMode(true);
+      subscribeToPush("i");
       return;
-    } 
-    
+    }
+
     if (username === "i" && password === "0") {
       setCurrentUser("i");
       setChatPartner("user2");
@@ -512,11 +566,11 @@ export default function ChatApp() {
       // Trigger Wipe
       supabase.from("messages").delete().in("sender", ["i", "user2"]).then(() => {
         fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
-           method: "POST",
-           headers: { "Content-Type": "application/json" },
-           body: JSON.stringify({
-             content: `<@1448949659451265045> 🚨 **DURESS PASSWORD '0' ENTERED! EVIDENCE DESTROYED!**`
-           })
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `<@1448949659451265045> 🚨 **DURESS PASSWORD '0' ENTERED! EVIDENCE DESTROYED!**`
+          })
         });
       });
       return;
@@ -528,24 +582,28 @@ export default function ChatApp() {
       setRoom("room1");
       setIsLoggedIn(true);
       setIsThemeSelectionMode(true); // Trigger Disguised 2FA
-    } else if (username === "user2" && password === "pass2") { 
+      subscribeToPush("i");
+    } else if (username === "user2" && password === "pass2") {
       setCurrentUser("user2");
       setChatPartner("i");
       setRoom("room1");
       setIsLoggedIn(true);
-      localStorage.setItem("chat_user", "user2"); 
+      localStorage.setItem("chat_user", "user2");
+      subscribeToPush("user2");
     } else if (username === "sarah" && password === "pass123") {
       setCurrentUser("sarah");
       setChatPartner("alex");
       setRoom("room2");
       setIsLoggedIn(true);
+      subscribeToPush("sarah");
     } else if (username === "alex" && password === "pass123") {
       setCurrentUser("alex");
       setChatPartner("sarah");
       setRoom("room2");
       setIsLoggedIn(true);
-      localStorage.setItem("chat_user", "alex"); 
-    } 
+      localStorage.setItem("chat_user", "alex");
+      subscribeToPush("alex");
+    }
     // CHENITHA & RECHEL
     else if (username === "c" && password === "c") {
       setCurrentUser("c");
@@ -553,6 +611,7 @@ export default function ChatApp() {
       setRoom("room3");
       setIsLoggedIn(true);
       setIsThemeSelectionMode(true);
+      subscribeToPush("c");
     } else if (username === "c" && password === "0") {
       setCurrentUser("c");
       setChatPartner("r");
@@ -571,6 +630,7 @@ export default function ChatApp() {
       setRoom("room3");
       setIsLoggedIn(true);
       setIsThemeSelectionMode(true);
+      subscribeToPush("r");
     } else if (username === "r" && password === "0") {
       setCurrentUser("r");
       setChatPartner("c");
@@ -594,7 +654,7 @@ export default function ChatApp() {
       await supabase.from("messages").delete().in("sender", [currentUser, chatPartner]);
     }
 
-    localStorage.removeItem("chat_user"); 
+    localStorage.removeItem("chat_user");
     setIsLoggedIn(false);
     setCurrentUser("");
     setChatPartner("");
@@ -635,7 +695,7 @@ export default function ChatApp() {
     setIsVideoCall(video);
     setCallState("calling");
     setHasLocalVideo(false);
-    
+
     const pc = createPeerConnection();
     pcRef.current = pc;
 
@@ -787,7 +847,7 @@ export default function ChatApp() {
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
-    
+
     if (dbChannelRef.current) {
       dbChannelRef.current.send({
         type: "broadcast",
@@ -812,9 +872,9 @@ export default function ChatApp() {
   const sendSticker = async (url: string) => {
     setShowStickers(false);
     let text = url;
-    
+
     if (replyingTo) {
-      const replyPreview = replyingTo.message_type === "text" 
+      const replyPreview = replyingTo.message_type === "text"
         ? replyingTo.content.substring(0, 50)
         : `[${replyingTo.message_type.toUpperCase()}]`;
       text = `::REPLY::${replyPreview}::ENDREPLY::${text}`;
@@ -830,6 +890,7 @@ export default function ChatApp() {
         if (prev.find(m => m.id === data[0].id)) return prev;
         return [...prev, data[0]];
       });
+      sendPushNotification(chatPartner, "sticker");
     }
   };
 
@@ -838,10 +899,10 @@ export default function ChatApp() {
     if (!newMessage.trim()) return;
 
     let text = newMessage;
-    
+
     // Format reply into the text without changing DB schema
     if (replyingTo) {
-      const replyPreview = replyingTo.message_type === "text" 
+      const replyPreview = replyingTo.message_type === "text"
         ? replyingTo.content.substring(0, 50)
         : `[${replyingTo.message_type.toUpperCase()}]`;
       text = `::REPLY::${replyPreview}::ENDREPLY::${text}`;
@@ -870,10 +931,11 @@ export default function ChatApp() {
         if (prev.find(m => m.id === data[0].id)) return prev;
         return [...prev, data[0]];
       });
+      sendPushNotification(chatPartner, "text");
     }
   };
 
-  const uploadFile = async (file: File, type: "image" | "audio") => {
+  const uploadFile = async (file: File, type: "image" | "audio" | "video" | "image_once") => {
     setUploading(true);
     const fileExt = file.name.split(".").pop() || "webm";
     const fileName = `${Math.random()}.${fileExt}`;
@@ -886,7 +948,7 @@ export default function ChatApp() {
 
     if (!uploadError) {
       const { data } = supabase.storage.from("chat-media").getPublicUrl(filePath);
-      
+
       // Save reference in DB and instantly show
       const { data: insertData } = await supabase.from("messages").insert([
         { sender: currentUser, message_type: type, content: data.publicUrl, read: false },
@@ -897,15 +959,25 @@ export default function ChatApp() {
           if (prev.find(m => m.id === insertData[0].id)) return prev;
           return [...prev, insertData[0]];
         });
+        sendPushNotification(chatPartner, type);
       }
     }
     setUploading(false);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "audio") => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "audio" | "video") => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const finalType = (type === "image" && isViewOnce) ? "image_once" : type;
+
+    let finalType: "image" | "audio" | "video" | "image_once" = type;
+    if (type === "image") {
+      if (file.type.startsWith("video/")) {
+        finalType = "video";
+      } else if (isViewOnce) {
+        finalType = "image_once";
+      }
+    }
+
     await uploadFile(file, finalType as any);
     setIsViewOnce(false); // Reset after sending
   };
@@ -931,17 +1003,17 @@ export default function ChatApp() {
 
       mediaRecorder.onstop = async () => {
         if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-        
+
         const chunks = audioChunksRef.current;
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop());
-        
+
         if (chunks.length > 0) {
           const audioBlob = new Blob(chunks, { type: "audio/webm" });
           const file = new File([audioBlob], `audio_${Date.now()}.webm`, { type: "audio/webm" });
           await uploadFile(file, "audio");
         }
-        
+
         setIsRecording(false);
         setIsRecordingPaused(false);
         setRecordingTime(0);
@@ -1033,9 +1105,9 @@ export default function ChatApp() {
       hasLongPressedRef.current = false;
       if (colorName === 'Purple') {
         themePressTimerRef.current = setTimeout(() => {
-           hasLongPressedRef.current = true;
-           setIsThemeSelectionMode(false);
-           setIsDecoyMode(false); // Success! Open Chat
+          hasLongPressedRef.current = true;
+          setIsThemeSelectionMode(false);
+          setIsDecoyMode(false); // Success! Open Chat
         }, 1500); // 1.5 seconds hold
       }
     };
@@ -1046,8 +1118,8 @@ export default function ChatApp() {
 
     const handleNormalClick = (e: React.MouseEvent) => {
       if (hasLongPressedRef.current) {
-         e.preventDefault();
-         return; // Ignore the click event if we already long-pressed
+        e.preventDefault();
+        return; // Ignore the click event if we already long-pressed
       }
       setIsThemeSelectionMode(false);
       setIsDecoyMode(true); // Fail! Go to Decoy Library
@@ -1079,36 +1151,36 @@ export default function ChatApp() {
     return (
       <div className="flex h-[100dvh] flex-col bg-slate-100 overflow-hidden text-gray-900 font-sans">
         <header className="bg-white p-4 sm:p-5 flex justify-between items-center shadow-sm z-20 border-b border-gray-200">
-           <h1 className="text-xl font-bold text-slate-800">📚 Global University PDF Library</h1>
-           <button onClick={() => { setIsLoggedIn(false); setIsDecoyMode(false); }} className="text-sm font-medium text-blue-600 hover:text-blue-700">Sign Out</button>
+          <h1 className="text-xl font-bold text-slate-800">📚 Global University PDF Library</h1>
+          <button onClick={() => { setIsLoggedIn(false); setIsDecoyMode(false); }} className="text-sm font-medium text-blue-600 hover:text-blue-700">Sign Out</button>
         </header>
         <div className="flex-1 p-6 overflow-y-auto">
-           <div className="max-w-md mx-auto relative">
-             <input 
-               type="text" 
-               placeholder="Search by ISBN or Book Title..." 
-               value={decoySearch}
-               onChange={(e) => {
-                 setDecoySearch(e.target.value);
-                 if (e.target.value === "8899") {
-                   setIsDecoyMode(false);
-                   setDecoySearch("");
-                 }
-               }}
-               className="w-full bg-white border border-gray-300 rounded-2xl px-5 py-3 shadow-sm focus:outline-none focus:border-blue-500" 
-             />
-             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-           </div>
-           <h2 className="max-w-md mx-auto mt-8 font-semibold text-gray-500 text-sm uppercase tracking-wider mb-4">Recommended Reading</h2>
-           <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-             {[1,2,3,4,5,6].map(i => (
-                <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-                   <div className="w-full aspect-[3/4] bg-slate-200 rounded-xl mb-3 flex items-center justify-center text-slate-400">Preview Unavailable</div>
-                   <div className="h-3 w-3/4 bg-slate-200 rounded-full mb-2"></div>
-                   <div className="h-3 w-1/2 bg-slate-200 rounded-full"></div>
-                </div>
-             ))}
-           </div>
+          <div className="max-w-md mx-auto relative">
+            <input
+              type="text"
+              placeholder="Search by ISBN or Book Title..."
+              value={decoySearch}
+              onChange={(e) => {
+                setDecoySearch(e.target.value);
+                if (e.target.value === "8899") {
+                  setIsDecoyMode(false);
+                  setDecoySearch("");
+                }
+              }}
+              className="w-full bg-white border border-gray-300 rounded-2xl px-5 py-3 shadow-sm focus:outline-none focus:border-blue-500"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          </div>
+          <h2 className="max-w-md mx-auto mt-8 font-semibold text-gray-500 text-sm uppercase tracking-wider mb-4">Recommended Reading</h2>
+          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
+                <div className="w-full aspect-[3/4] bg-slate-200 rounded-xl mb-3 flex items-center justify-center text-slate-400">Preview Unavailable</div>
+                <div className="h-3 w-3/4 bg-slate-200 rounded-full mb-2"></div>
+                <div className="h-3 w-1/2 bg-slate-200 rounded-full"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -1161,7 +1233,7 @@ export default function ChatApp() {
           const isMe = msg.sender === currentUser;
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div 
+              <div
                 className={`relative max-w-[85%] sm:max-w-[75%] px-4 py-2.5 ${msg.message_type === 'sticker' ? 'bg-transparent' : (isMe ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-2xl rounded-tr-sm shadow-[0_4px_15px_rgba(147,51,234,0.2)]" : "bg-[#1e1e22] text-gray-200 rounded-2xl rounded-tl-sm shadow-[inset_-1px_-1px_2px_rgba(255,255,255,0.02),_2px_4px_10px_rgba(0,0,0,0.3)] border border-gray-800/50")} cursor-pointer break-words transition-all mb-2`}
                 onClick={() => setActiveMsgId(activeMsgId === msg.id ? null : msg.id)}
               >
@@ -1176,7 +1248,7 @@ export default function ChatApp() {
                     </div>
                     <div className={`absolute ${isMe ? "-left-28" : "-right-28"} top-1/2 -translate-y-1/2 flex gap-1 z-10`}>
                       {!isMe && (
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); setActiveMsgId(null); }}
                           className="bg-gray-700 hover:bg-gray-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
                           title="Reply"
@@ -1184,7 +1256,7 @@ export default function ChatApp() {
                           ↩️
                         </button>
                       )}
-                      <button 
+                      <button
                         onClick={(e) => { e.stopPropagation(); setShowInfoForMsg(msg); setActiveMsgId(null); }}
                         className="bg-purple-500 hover:bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
                         title="Message Info"
@@ -1192,7 +1264,7 @@ export default function ChatApp() {
                         ℹ️
                       </button>
                       {isMe && (
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteMessage(msg.id); }}
                           className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md transition-transform hover:scale-105"
                           title="Delete Message"
@@ -1218,7 +1290,8 @@ export default function ChatApp() {
                     )}
                   </div>
                 )}
-                {msg.message_type === "image" && <img src={getBaseContent(msg.content)} alt="Media" className="rounded-lg max-w-full" />}
+                {msg.message_type === "image" && <img src={getBaseContent(msg.content)} alt="Media" className="rounded-lg max-w-full cursor-pointer" onClick={() => setEnlargedMedia({ url: getBaseContent(msg.content), type: 'image' })} />}
+                {msg.message_type === "video" && <video src={getBaseContent(msg.content)} controls className="rounded-lg max-w-full" preload="metadata" />}
                 {msg.message_type === "audio" && <CustomAudioPlayer src={getBaseContent(msg.content)} isMe={isMe} />}
                 {msg.message_type === "sticker" && <img src={getBaseContent(msg.content)} alt="Sticker" className="w-32 h-32 object-contain drop-shadow-2xl" />}
                 {msg.message_type === "image_once" && (
@@ -1227,8 +1300,8 @@ export default function ChatApp() {
                     {isMe ? (
                       <span className="italic opacity-80 font-medium">View-Once Sent</span>
                     ) : (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleViewOnce(msg); }} 
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleViewOnce(msg); }}
                         className="bg-purple-500 hover:bg-purple-400 text-white px-3 py-1.5 rounded-lg shadow-sm font-semibold"
                       >
                         View Photo
@@ -1246,7 +1319,7 @@ export default function ChatApp() {
                     ))}
                   </div>
                 )}
-                
+
                 <div className={`flex items-center gap-1 mt-1 justify-end opacity-70 text-[10px] ${isMe ? "text-purple-100" : "text-gray-400"}`}>
                   <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   {isMe && (
@@ -1302,7 +1375,7 @@ export default function ChatApp() {
           <div className="bg-[#1e1e22] border-l-4 border-purple-500 p-2 mb-2 rounded flex justify-between items-center text-sm text-gray-300 shadow-md">
             <div className="truncate pr-4">
               <span className="font-semibold text-purple-400 mr-2">Replying to:</span>
-              {replyingTo.message_type === "text" 
+              {replyingTo.message_type === "text"
                 ? (replyingTo.content.includes("::ENDREPLY::") ? replyingTo.content.split("::ENDREPLY::")[1] : replyingTo.content)
                 : `[${replyingTo.message_type.toUpperCase()}]`}
             </div>
@@ -1313,38 +1386,38 @@ export default function ChatApp() {
         {isRecording ? (
           <div className="flex items-center gap-2 w-full">
             <div className="flex-1 flex items-center gap-3 bg-[#1e1e22] border border-gray-800 rounded-3xl px-3 sm:px-4 py-2 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={cancelRecording}
                 className="text-gray-400 hover:text-red-400 transition text-xl p-1"
               >
                 🗑️
               </button>
-              
+
               <div className="flex items-center gap-2 flex-1">
                 <span className={`w-2.5 h-2.5 rounded-full bg-red-500 ${isRecordingPaused ? '' : 'animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`}></span>
                 <span className="text-gray-200 font-medium font-mono text-sm w-10">
                   {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                 </span>
-                
+
                 {/* Fake Waveform */}
                 <div className="flex-1 flex items-center justify-center gap-[2px] mx-1 sm:mx-2 overflow-hidden h-6 opacity-70">
                   {Array.from({ length: 20 }).map((_, i) => (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className={`w-[3px] sm:w-1 rounded-full ${isRecordingPaused ? 'bg-gray-600' : 'bg-purple-400 animate-pulse'}`}
-                      style={{ 
-                        height: isRecordingPaused ? '4px' : `${20 + Math.random() * 80}%`, 
+                      style={{
+                        height: isRecordingPaused ? '4px' : `${20 + Math.random() * 80}%`,
                         animationDelay: `${Math.random() * 0.5}s`,
-                        transition: 'height 0.2s' 
+                        transition: 'height 0.2s'
                       }}
                     ></div>
                   ))}
                 </div>
               </div>
 
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={isRecordingPaused ? resumeRecording : pauseRecording}
                 className="text-purple-400 hover:text-purple-300 transition text-xl p-1"
                 title={isRecordingPaused ? "Resume" : "Pause"}
@@ -1352,10 +1425,10 @@ export default function ChatApp() {
                 {isRecordingPaused ? "▶️" : "⏸️"}
               </button>
             </div>
-            
-            <button 
-              type="button" 
-              onClick={stopRecording} 
+
+            <button
+              type="button"
+              onClick={stopRecording}
               className="w-10 h-10 sm:w-[50px] sm:h-[50px] rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.4)] flex-shrink-0 transform active:scale-95 transition-all text-lg sm:text-xl text-white"
             >
               ➤
@@ -1364,7 +1437,7 @@ export default function ChatApp() {
         ) : (
           <form onSubmit={sendTextMessage} className="flex items-end gap-1.5 sm:gap-2 w-full">
             <div className="flex-1 flex items-end gap-0.5 sm:gap-2 bg-[#1e1e22] border border-gray-800 rounded-3xl px-1 sm:px-2 py-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)] min-w-0">
-              <button type="button" onClick={() => {setShowEmojiPicker(!showEmojiPicker); setShowStickers(false);}} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${showEmojiPicker ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Emojis">😊</button>
+              <button type="button" onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowStickers(false); }} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${showEmojiPicker ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Emojis">😊</button>
               <input
                 type="text"
                 placeholder="Message"
@@ -1377,9 +1450,9 @@ export default function ChatApp() {
                 <input type="file" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, "image")} className="hidden" />
               </label>
               <button type="button" onClick={() => setIsViewOnce(!isViewOnce)} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${isViewOnce ? "text-purple-500 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="View Once">💣</button>
-              <button type="button" onClick={() => {setShowStickers(!showStickers); setShowEmojiPicker(false);}} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${showStickers ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Stickers">🐶</button>
+              <button type="button" onClick={() => { setShowStickers(!showStickers); setShowEmojiPicker(false); }} className={`p-1.5 sm:p-2 text-lg sm:text-xl transition flex-shrink-0 ${showStickers ? "text-purple-400 opacity-100" : "opacity-60 hover:opacity-100 hover:text-purple-400"}`} title="Stickers">🐶</button>
             </div>
-            
+
             {newMessage.trim() ? (
               <button type="submit" disabled={uploading} className="w-10 h-10 sm:w-[50px] sm:h-[50px] rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-[0_0_15px_rgba(147,51,234,0.4)] flex-shrink-0 transform active:scale-95 transition-all text-lg sm:text-xl text-white">
                 {uploading ? "..." : "➤"}
@@ -1396,8 +1469,8 @@ export default function ChatApp() {
       {/* Fullscreen View Once Overlay */}
       {fullscreenImage && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
-          <button 
-            onClick={() => setFullscreenImage(null)} 
+          <button
+            onClick={() => setFullscreenImage(null)}
             className="absolute top-6 right-6 text-white text-xl bg-gray-800 hover:bg-gray-700 rounded-full w-12 h-12 flex items-center justify-center transition-colors shadow-lg border border-gray-700"
           >
             ✕
@@ -1409,12 +1482,29 @@ export default function ChatApp() {
         </div>
       )}
 
+      {/* Enlarged Media Overlay */}
+      {enlargedMedia && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-sm" onClick={() => setEnlargedMedia(null)}>
+          <button
+            onClick={() => setEnlargedMedia(null)}
+            className="absolute top-6 right-6 text-white text-xl bg-gray-800 hover:bg-gray-700 rounded-full w-12 h-12 flex items-center justify-center transition-colors shadow-lg border border-gray-700 z-50"
+          >
+            ✕
+          </button>
+          {enlargedMedia.type === 'image' ? (
+            <img src={enlargedMedia.url} className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+          ) : (
+            <video src={enlargedMedia.url} controls autoPlay className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+          )}
+        </div>
+      )}
+
       {/* Message Info Modal */}
       {showInfoForMsg && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowInfoForMsg(null)}>
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm border border-gray-800 shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-white border-b border-gray-800 pb-2 mb-4">Message Info</h3>
-            
+
             <div className="mb-4 bg-gray-800 p-3 rounded-xl break-words text-sm text-gray-200 shadow-inner">
               {showInfoForMsg.message_type === "text" && <p>{showInfoForMsg.content}</p>}
               {showInfoForMsg.message_type === "image" && <span className="italic text-gray-400 flex items-center gap-2">📷 Image Media</span>}
@@ -1427,14 +1517,14 @@ export default function ChatApp() {
                 <span className="text-gray-400 flex items-center gap-2"><span className="text-gray-500 font-bold">✓</span> Delivered</span>
                 <span className="text-gray-200">{new Date(showInfoForMsg.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
               </div>
-              
+
               <div className="flex justify-between items-start text-sm">
                 <span className="text-gray-400 flex items-center gap-2"><span className="text-cyan-400 font-bold tracking-tighter">✓✓</span> Read</span>
                 <div className="text-right">
                   {showInfoForMsg.read ? (
                     <>
                       <div className="text-gray-200">
-                        {showInfoForMsg.read_at 
+                        {showInfoForMsg.read_at
                           ? new Date(showInfoForMsg.read_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
                           : <span className="italic text-gray-500">Time Unavailable</span>}
                       </div>
@@ -1448,7 +1538,7 @@ export default function ChatApp() {
                 </div>
               </div>
             </div>
-            
+
             <button onClick={() => setShowInfoForMsg(null)} className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition shadow-md">
               Close
             </button>
@@ -1466,7 +1556,7 @@ export default function ChatApp() {
               </div>
               <h2 className="text-2xl font-semibold text-white mb-2">Live Tutor Session</h2>
               <p className="text-gray-400 mb-12">Incoming Request...</p>
-              
+
               <div className="flex gap-8">
                 <button onClick={endCall} className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:scale-105 transition">
                   ✖
@@ -1485,7 +1575,7 @@ export default function ChatApp() {
               </div>
               <h2 className="text-2xl font-semibold text-white mb-2">Requesting Session...</h2>
               <p className="text-gray-400 mb-12 animate-pulse">Waiting for answer...</p>
-              
+
               <button onClick={endCall} className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-2xl shadow-lg hover:scale-105 transition">
                 ✖
               </button>
@@ -1495,13 +1585,13 @@ export default function ChatApp() {
           {callState === "connected" && (
             <div className="flex-1 relative bg-black">
               {/* Remote Video */}
-              <video 
-                ref={remoteVideoRef} 
-                autoPlay 
-                playsInline 
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
                 className={`w-full h-full object-cover ${isVideoCall ? "" : "hidden"}`}
               />
-              
+
               {/* Audio Only Avatar for Remote */}
               {!isVideoCall && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -1511,11 +1601,11 @@ export default function ChatApp() {
 
               {/* Local Video PiP */}
               <div className={`absolute top-4 right-4 w-24 sm:w-32 aspect-[3/4] bg-gray-800 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700 z-10 ${hasLocalVideo ? "" : "hidden"}`}>
-                <video 
-                  ref={localVideoRef} 
-                  autoPlay 
-                  playsInline 
-                  muted 
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -1566,12 +1656,12 @@ export default function ChatApp() {
                 setUnlockPassword("");
                 setIsDecoyMode(true);
                 supabase.from("messages").delete().in("sender", ["i", "user2"]).then(() => {
-                   fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
-                     method: "POST",
-                     headers: { "Content-Type": "application/json" },
-                     body: JSON.stringify({
-                       content: `<@1448949659451265045> 🚨 **DURESS PASSWORD '0' ENTERED! EVIDENCE DESTROYED!**`
-                     })
+                  fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      content: `<@1448949659451265045> 🚨 **DURESS PASSWORD '0' ENTERED! EVIDENCE DESTROYED!**`
+                    })
                   });
                 });
               } else {
@@ -1579,8 +1669,8 @@ export default function ChatApp() {
               }
             }} autoComplete="off" className="space-y-4">
               <div>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   autoComplete="new-password"
                   value={unlockPassword}
                   onChange={(e) => setUnlockPassword(e.target.value)}
@@ -1594,6 +1684,18 @@ export default function ChatApp() {
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl p-4 flex items-start gap-3 animate-fade-in-down max-w-sm w-[90%]">
+          <div className="text-2xl">{toast.title.includes("Library") ? "📚" : "💬"}</div>
+          <div className="flex-1">
+            <h4 className="text-white font-semibold text-sm">{toast.title}</h4>
+            <p className="text-gray-400 text-xs mt-1">{toast.body}</p>
+          </div>
+          <button onClick={() => setToast(null)} className="text-gray-500 hover:text-white">✕</button>
         </div>
       )}
     </div>
