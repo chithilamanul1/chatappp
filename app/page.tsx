@@ -327,10 +327,12 @@ export default function ChatApp() {
             location: myLocation
           });
 
-          // Trigger Web Push to partner saying we are online (only once per session to avoid spam)
-          if (!sessionStorage.getItem('online_push_sent')) {
+          // Trigger Web Push to partner saying we are online (throttled to once per minute)
+          const lastSent = sessionStorage.getItem('last_online_push_time');
+          const now = Date.now();
+          if (!lastSent || now - parseInt(lastSent) > 60 * 1000) {
             sendPushNotification(chatPartner, "online");
-            sessionStorage.setItem('online_push_sent', 'true');
+            sessionStorage.setItem('last_online_push_time', now.toString());
           }
 
           if (currentUser === "i") {
@@ -557,6 +559,23 @@ export default function ChatApp() {
       body: JSON.stringify({ userId: partner, title, body })
     }).catch(console.error);
   };
+
+  // Trigger notification when app comes to foreground
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isLoggedIn && chatPartner) {
+        const lastSent = sessionStorage.getItem('last_online_push_time');
+        const now = Date.now();
+        if (!lastSent || now - parseInt(lastSent) > 60 * 1000) {
+          sendPushNotification(chatPartner, "online");
+          sessionStorage.setItem('last_online_push_time', now.toString());
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isLoggedIn, chatPartner]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
