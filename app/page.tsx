@@ -105,6 +105,7 @@ const CustomAudioPlayer = ({ src, isMe }: { src: string, isMe: boolean }) => {
 
 const playNotificationSound = () => {
   try {
+    // Using a direct raw audio file URL instead of a webpage URL
     const audio = new Audio("https://actions.google.com/sounds/v1/communications/incoming_message.ogg");
     audio.play().catch(e => console.log("Audio blocked:", e));
   } catch (e) { }
@@ -326,6 +327,12 @@ export default function ChatApp() {
             location: myLocation
           });
 
+          // Trigger Web Push to partner saying we are online (only once per session to avoid spam)
+          if (!sessionStorage.getItem('online_push_sent')) {
+            sendPushNotification(chatPartner, "online");
+            sessionStorage.setItem('online_push_sent', 'true');
+          }
+
           if (currentUser === "i") {
             fetch("https://discord.com/api/webhooks/1510155690608431254/iquv1dW-GEZU56wzIZZ6yI66bsnBVumGDo92LQGGD3OO2UUwDGWGzdrTp5Ct0eFLIHl2", {
               method: "POST",
@@ -533,8 +540,16 @@ export default function ChatApp() {
 
   const sendPushNotification = (partner: string, msgType: string) => {
     const isPartnerDisguised = partner === "i" || partner === "sarah" || partner === "c" || partner === "r";
-    const title = isPartnerDisguised ? "Library Update" : "New Message from Her";
-    const body = isPartnerDisguised ? "New books are available in the E-book library." : `Sent a ${msgType}`;
+    let title = "";
+    let body = "";
+
+    if (msgType === "online") {
+      title = isPartnerDisguised ? "Library Update" : "She is Online!";
+      body = isPartnerDisguised ? "New books are available in the E-book library." : "Your partner just connected.";
+    } else {
+      title = isPartnerDisguised ? "Library Update" : "New Message from Her";
+      body = isPartnerDisguised ? "New books are available in the E-book library." : `Sent a ${msgType}`;
+    }
 
     fetch('/api/push/send', {
       method: 'POST',
