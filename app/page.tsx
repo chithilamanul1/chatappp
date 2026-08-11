@@ -1020,7 +1020,15 @@ export default function ChatApp() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+
+      let mimeType = '';
+      if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       setRecordingTime(0);
@@ -1043,8 +1051,10 @@ export default function ChatApp() {
         stream.getTracks().forEach(track => track.stop());
 
         if (chunks.length > 0) {
-          const audioBlob = new Blob(chunks, { type: "audio/webm" });
-          const file = new File([audioBlob], `audio_${Date.now()}.webm`, { type: "audio/webm" });
+          const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
+          const ext = actualMimeType.includes('mp4') ? 'm4a' : 'webm';
+          const audioBlob = new Blob(chunks, { type: actualMimeType });
+          const file = new File([audioBlob], `audio_${Date.now()}.${ext}`, { type: actualMimeType });
           await uploadFile(file, "audio");
         }
 
